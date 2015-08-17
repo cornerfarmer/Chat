@@ -62,7 +62,7 @@ while (running($time)) {
 		
 		foreach ($res as $row)
 		{
-			$currentMessageID = $row["id"];
+			$currentMessageID = $row["intern_id"];
 			if ($row['resource'] === NULL)
 			{
 				$id = $w->sendMessage($row['chat_id'] , $row['text']);				
@@ -71,7 +71,7 @@ while (running($time)) {
 			{	
 				$id = $w->sendMessageImage($row['chat_id'], $row['path']);
 			}
-			if (!$mysqli->query("UPDATE messages SET status=1, wid='".$id."' WHERE id=" . $row["id"]))
+			if (!$mysqli->query("UPDATE messages SET status=1, id='$id', time=".time()." WHERE intern_id=" . $row["intern_id"]))
 			{
 				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
 			}

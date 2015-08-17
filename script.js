@@ -3,7 +3,7 @@ var countdown;
 var contacts = [];
 var groups = [];
 var init = 0;
-var newestID = -1;
+var newestMessageTime = -1;
 var answerID;
 var answerGroup;
 
@@ -39,9 +39,9 @@ function answerButtonOnClick(group, id)
 {
 	var cssID;
 	if (group)
-		cssID = "#g" + id;
+	    cssID = "#g" + idFromJid(id);
 	else
-		cssID = "#s" + id;
+	    cssID = "#s" + idFromJid(id);
 		
 	if ($(cssID).length === 0)
 		openChat(group, id);
@@ -119,7 +119,7 @@ function getContacts()
 				contacts[id] = [];
 				var contact = contacts[x[i].getElementsByTagName("ID")[0].textContent];
 				contact["name"] = x[i].getElementsByTagName("Name")[0].textContent;
-				contact["lastSeen"] = "online";
+				contact["lastSeen"] = x[i].getElementsByTagName("LastSeen")[0].textContent;
 				if (x[i].getElementsByTagName("Resource").length > 0)				
 				{
 					contact["thumbnailPicture"] = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("ThumbnailPath")[0].textContent;	
@@ -131,7 +131,7 @@ function getContacts()
 					contact["thumbnailPicture"] = "";
 				}
 				if (id != "0")
-					document.getElementById('contacts').innerHTML += "<div class=\"contact mdl-card mdl-shadow--2dp\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false," + id + ")\" ><div class=\"name\">" + contact["name"] + "</div><div class=\"status\">" + contact["status"] + "</div></div></div>";
+				    document.getElementById('contacts').innerHTML += "<div class=\"contact mdl-card mdl-shadow--2dp\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false,'" + id + "')\" ><div class=\"name\">" + contact["name"] + "</div><div class=\"status\">" + contact["lastSeen"] + "</div></div></div>";
 			}
 			if (init++ === 0)
 				getGroups();
@@ -152,8 +152,9 @@ function getGroups()
 			x = xmlhttp.responseXML.documentElement.getElementsByTagName("Group");
 			for (i = 0; i < x.length; i++)
 			{
-				groups[x[i].getElementsByTagName("ID")[0].textContent] = [];
-				var group = groups[x[i].getElementsByTagName("ID")[0].textContent];
+			    var id = x[i].getElementsByTagName("ID")[0].textContent;
+			    groups[id] = [];
+			    var group = groups[id];
 				group["name"] = x[i].getElementsByTagName("Name")[0].textContent;				
 			}
 			if (init++ === 1)
@@ -177,14 +178,14 @@ function getMessages()
 			{
 				if (x[i].getElementsByTagName("Type")[0].textContent === "group")
 				{
-					if ($("#g" + x[i].getElementsByTagName("ChatID")[0].textContent).length === 0)
+				    if ($("#g" + idFromJid(x[i].getElementsByTagName("ChatID")[0].textContent)).length === 0)
 					{
 						openChat(true, x[i].getElementsByTagName("ChatID")[0].textContent);
 					}
 				}
 				else
 				{
-					if ($("#s" + x[i].getElementsByTagName("ChatID")[0].textContent).length === 0)
+				    if ($("#s" + idFromJid(x[i].getElementsByTagName("ChatID")[0].textContent)).length === 0)
 					{
 						openChat(false, x[i].getElementsByTagName("ChatID")[0].textContent);
 					}
@@ -206,7 +207,7 @@ function getMessages()
 					path = "";
 				}
 				addMessage(x[i].getElementsByTagName("Type")[0].textContent === "group", x[i].getElementsByTagName("ChatID")[0].textContent, x[i].getElementsByTagName("ID")[0].textContent, x[i].getElementsByTagName("Text")[0].textContent, x[i].getElementsByTagName("Sender")[0].textContent, x[i].getElementsByTagName("Time")[0].textContent, x[i].getElementsByTagName("Status")[0].textContent, type, path, thumbnailPath);
-				newestID = x[i].getElementsByTagName("ID")[0].textContent;
+				newestMessageTime = x[i].getElementsByTagName("Timestamp")[0].textContent;
 			}
 			
 			restartTimer();
@@ -214,7 +215,7 @@ function getMessages()
 	}
 	xmlhttp.open("POST", "getMessages.php", true);
 	xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-	xmlhttp.send("newestID=" + newestID);
+	xmlhttp.send("newestMessageTime=" + newestMessageTime);
 }
 
 function addMessage(group, chatID, messageID, text, senderID, time, status, resourceType, resourcePath, resourceThumbnailPath)
@@ -244,9 +245,9 @@ function addMessage(group, chatID, messageID, text, senderID, time, status, reso
 	
 	var chat;
 	if (group) 
-		chat = "#g" + chatID + " .messages";
+	    chat = "#g" + idFromJid(chatID) + " .messages";
 	else
-		chat = "#s" + chatID + " .messages"
+	    chat = "#s" + idFromJid(chatID) + " .messages"
 	$(chat).append(newMessage);
 
 	setStatusOfMessage(messageID, status);
@@ -270,7 +271,7 @@ function setStatusOfMessage(messageID, status)
 
 function openChat(group, id)
 {
-	var newChat = "<div class=\"mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col chat\" id=\"" + (group ? "g" : "s") + id + "\"><div class=\"mdl-color--primary-dark chat_description\">";
+    var newChat = "<div class=\"mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col chat\" id=\"" + (group ? "g" : "s") + idFromJid(id) + "\"><div class=\"mdl-color--primary-dark chat_description\">";
 	if (group === false)
 	{		
 		newChat += "<h4>" + contacts[id]["name"] + "</h4>";
@@ -327,4 +328,9 @@ function showEmoji(category)
 {
 	$(".emoji-tab").css("display", "none");
 	$("#emoji-" + category).css("display", "block");
+}
+
+function idFromJid(jid)
+{
+    return jid.substring(0, jid.indexOf("@"));
 }

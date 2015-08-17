@@ -29,6 +29,7 @@
 	display: flex;
 	flex-direction: column;
 	cursor: pointer;
+    font-size: 9pt;
 }
 
 #inputFieldSpacer
@@ -229,17 +230,17 @@
 
 .message-status-off
 {
-    color: white;
+    color: transparent;
 }
 
 .message_other .message-status-on
 {
-    color: rgb(255, 82, 82);
+    color: white;
 }
 
 .message_own .message-status-on
 {
-    color: rgb(48, 63, 159);
+    color: white;
 }
 
 
@@ -280,6 +281,15 @@
 .card-image.mdl-card {
 	min-height: auto;
 }
+
+.chat_picture .card-image.mdl-card {
+	width: 100px;
+	height: 100px;
+}
+.contact .card-image {
+	background-size:cover !important;
+}
+
 
 .contact .card-image.mdl-card {
 	width: 54px;

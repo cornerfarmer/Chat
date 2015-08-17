@@ -3,8 +3,8 @@
 
 	$mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
 
-	$stmt = $mysqli->prepare("SELECT * FROM messages Left join resources on messages.resource = resources.resource_id WHERE id > ? AND status!=0");	
-	$stmt->bind_param("i", $_REQUEST["newestID"]);
+	$stmt = $mysqli->prepare("SELECT * FROM messages Left join resources on messages.resource = resources.resource_id WHERE time > ? AND status!=0");	
+	$stmt->bind_param("i", $_REQUEST["newestMessageTime"]);
 	$stmt->execute(); 
 	$res = $stmt->get_result(); 
 		
@@ -19,6 +19,7 @@
 		$message->addChild('ChatID', $row["chat_id"]);
 		$message->addChild('Status', $row["status"]);
 		$message->addChild('Time', date("j. M H:i", $row["time"]) . " Uhr");
+        $message->addChild('Timestamp', $row["time"]);
 		if ($row["isGroup"] === 1)			
 			$message->addChild('Type', "group");
 		else

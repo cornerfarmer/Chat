@@ -106,26 +106,23 @@ class MyEvents extends AllEvents
 		foreach ($result->nonExisting as $number) {
 			echo "$number does not exist<br />";
 		}
-		die();//to break out of the while(true) loop		
-
+	
 	}
 	
 	public function onGetRequestLastSeen( $mynumber, $from, $id, $seconds )
 	{
 	  echo "Last seen of $id: ".gmdate("H:i:s", $seconds);
-	  die();
 	}
 	
-	public function onGetMessage( $mynumber, $from, $id, $type, $time, $name, $body, $resource = NULL)
+	public function onGetMessage($mynumber, $from, $id, $type, $time, $name, $body, $resource = NULL)
 	{
-		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, wid, sender_id, chat_id, isGroup, status, resource) VALUES (?, ?, ?, ?, ?, 2, ?)")))
+		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, id, sender_id, chat_id, isGroup, status, resource, time) VALUES (?, ?, ?, ?, ?, 2, ?, ?)")))
 		{
 			  echo "Prepare failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
 
-		$fromID = substr($from, 0, strpos($from, "@"));
 		$isGroup = false;
-		if (!$stmt->bind_param("ssssis", $body, $id, $fromID, $fromID, $isGroup, $resource))
+		if (!$stmt->bind_param("ssssii", $body, $id, $from, $from, $isGroup, $resource, $time))
 		{
 			  echo "Binding parameters failed: (" . $stmt->errno . ") " . $stmt->error;
 		}
@@ -155,17 +152,15 @@ class MyEvents extends AllEvents
 	
 	public function onMessageReceivedClient($mynumber, $from, $id, $type, $time, $participant) 
 	{
-		$fromID = substr($from, 0, strpos($from, "@"));
 		$status = ($type === "" ? 2 : 3);
-		if (!$this->mysqli->query("UPDATE messages SET status=".$status."  WHERE wid='" . $id . "' AND chat_id='" . $fromID . "'"))
+		if (!$this->mysqli->query("UPDATE messages SET status=".$status."  WHERE id='" . $id . "' AND chat_id='" . $from . "'"))
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
 	}
     public function onMessageReceivedServer($mynumber, $from, $id, $type, $time)
 	{		
-		$fromID = substr($from, 0, strpos($from, "@"));
-		if (!$this->mysqli->query("UPDATE messages SET status=1 WHERE wid='" . $id . "' AND chat_id='" . $fromID . "'"))
+		if (!$this->mysqli->query("UPDATE messages SET status=1 WHERE id='" . $id . "' AND chat_id='" . $from . "'"))
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
@@ -189,6 +184,7 @@ class MyEvents extends AllEvents
 		}
 		
 		$isGroup = false;
+        $gid .= "@g.us";
 		if (!$stmt->bind_param("ss", $gid, $subject))
 		{
 			echo "Binding parameters failed: (" . $stmt->errno . ") " . $stmt->error;
@@ -203,14 +199,11 @@ class MyEvents extends AllEvents
 
     private function addContacts($newContacts)
     {
-        $sql = "INSERT INTO contacts (id) VALUES ";
+        $sql = "INSERT INTO contacts (id, name) VALUES ";
         for ($i = 0; $i < sizeof($newContacts); $i++)
         {
-            $pn = substr($newContacts[$i], 0, strpos($newContacts[$i], "@")); 
-            if ($pn !== $GLOBALS['username'])
-            {
-                $sql .= "(" . $pn . "),";    
-            }
+             if (substr($newContacts[$i], 0, strpos($newContacts[$i], "@")) !== $GLOBALS['username']) 
+                $sql .= "('" . $newContacts[$i] . "','" . substr($newContacts[$i], 0, strpos($newContacts[$i], "@")) . "'),";
         }
         $sql = rtrim($sql, ",");
 
@@ -220,19 +213,19 @@ class MyEvents extends AllEvents
 		}
         for ($i = 0; $i < sizeof($newContacts); $i++)
         {
-             $pn = substr($newContacts[$i], 0, strpos($newContacts[$i], "@")); 
-           if ($pn !== $GLOBALS['username'])
-           {
-               $this->whatsProt->sendGetProfilePicture($pn, true); 
-               $this->whatsProt->sendGetProfilePicture($pn, false); 
-           }
+            $this->whatsProt->sendGetProfilePicture($newContacts[$i], true); 
+            $this->whatsProt->sendGetProfilePicture($newContacts[$i], false);  
+            $this->whatsProt->sendPresenceSubscription($newContacts[$i]);            
         }
+        $this->whatsProt->sendSync($newContacts);
     }
 
 	public function onGetProfilePicture($mynumber, $from, $type, $data) 
     {
-        $fromID = substr($from, 0, strpos($from, "@"));
-        $res = $this->mysqli->query("SELECT picture FROM contacts WHERE id=$fromID");
+        if (substr($from, 0, strpos($from, "@")) === $GLOBALS['username'])
+            $from = 0;
+
+        $res = $this->mysqli->query("SELECT picture FROM contacts WHERE id='$from'");
 
         if ($res->num_rows > 0)
             $resourceID = $res->fetch_assoc()['picture'];
@@ -241,12 +234,12 @@ class MyEvents extends AllEvents
 
         if ($type == "preview") 
         {
-            $path = "media/prev_" . $fromID . ".jpg";
+            $path = "media/prev_" . $from . ".jpg";
             $pathType = "thumbnail_path";
         }
         else
         {
-            $path = "media/" . $fromID . ".jpg";     
+            $path = "media/" . $from . ".jpg";     
             $pathType = "path";       
         }
         file_put_contents($path, $data);	    	
@@ -258,16 +251,13 @@ class MyEvents extends AllEvents
 			    echo "Table insert failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		    }
             $resourceID = $this->mysqli->insert_id;
-            echo $resourceID . ", " . $fromID;
-            echo "UPDATE contacts SET picture=$resourceID WHERE id=$fromID";
-            if (!$this->mysqli->query("UPDATE contacts SET picture=$resourceID WHERE id=$fromID"))
+            if (!$this->mysqli->query("UPDATE contacts SET picture=$resourceID WHERE id='$from'"))
 		    {
 			    echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		    }	
         }
         else
         {
-            echo "sd $resourceID" . ", " . $fromID;
             if (!$this->mysqli->query("UPDATE resources SET $pathType='$path' WHERE resource_id=$resourceID"))
 		    {
 			    echo "Table insert failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
@@ -277,15 +267,13 @@ class MyEvents extends AllEvents
 
 	public function onGetGroupMessage($mynumber, $from_group_jid, $from_user_jid, $id, $type, $time, $name, $body) 
 	{
-		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, wid, sender_id, chat_id, isGroup, status) VALUES (?, ?, ?, ?, ?, 2)")))
+		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, id, sender_id, chat_id, isGroup, status, time) VALUES (?, ?, ?, ?, ?, 2, ?)")))
 		{
 			  echo "Prepare failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
 
-		$fromID = substr($from_user_jid, 0, strpos($from_user_jid, "@"));
-		$fromGroupID = substr($from_group_jid, 0, strpos($from_group_jid, "@"));
 		$isGroup = true;
-		if (!$stmt->bind_param("ssssi", $body, $id, $fromID, $fromGroupID, $isGroup))
+		if (!$stmt->bind_param("ssssi", $body, $id, $from_user_jid, $from_group_jid, $isGroup, $time))
 		{
 			  echo "Binding parameters failed: (" . $stmt->errno . ") " . $stmt->error;
 		}
@@ -299,8 +287,7 @@ class MyEvents extends AllEvents
 	
 	public function onPresenceAvailable($mynumber, $from)
 	{
-		$fromID = substr($from, 0, strpos($from, "@"));
-		if (!$this->mysqli->query("UPDATE contacts SET lastSeen=0 WHERE id='" . $fromID . "'"))
+		if (!$this->mysqli->query("UPDATE contacts SET lastSeen=0 WHERE id='" . $from . "'"))
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
@@ -308,8 +295,7 @@ class MyEvents extends AllEvents
 	
     public function onPresenceUnavailable($mynumber, $from, $last) 
 	{
-		$fromID = substr($from, 0, strpos($from, "@"));		
-		if (!$this->mysqli->query("UPDATE contacts SET lastSeen=".$last." WHERE id='" . $fromID . "'"))
+		if (!$this->mysqli->query("UPDATE contacts SET lastSeen=".$last." WHERE id='" . $from . "'"))
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
@@ -319,7 +305,7 @@ class MyEvents extends AllEvents
 	{
 		$thumbnailPath = "media/prev_" . $filename;
 		file_put_contents($thumbnailPath, $icon);		
-		if (!$this->mysqli->query("UPDATE resources Left join messages on messages.resource = resources.resource_id SET thumbnail_path='".$thumbnailPath."' WHERE id='" . $GLOBALS['currentMessageID'] . "'"))
+		if (!$this->mysqli->query("UPDATE resources Left join messages on messages.resource = resources.resource_id SET thumbnail_path='".$thumbnailPath."' WHERE intern_id='" . $GLOBALS['currentMessageID'] . "'"))
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}		

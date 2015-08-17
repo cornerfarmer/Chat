@@ -11,6 +11,7 @@
 		$contact->addChild('Name', $row["name"]);
 		$contact->addChild('Number', $row["number"]);
 		$contact->addChild('ID', $row["id"]);
+        $contact->addChild('LastSeen', ($row["lastSeen"] == 0 ? "Online" : date("j. M H:i", $row["lastSeen"]) . " Uhr"));
 		if ($row["picture"] !== NULL)
 		{
 			$resource = $contact->addChild('Resource');
