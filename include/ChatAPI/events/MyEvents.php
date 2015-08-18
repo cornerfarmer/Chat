@@ -36,6 +36,7 @@ class MyEvents extends AllEvents
 //        'onGetGroupsInfo',
 //        'onGetGroupsSubject',
         'onGetImage',
+        'onGetGroupImage',
 //        'onGetLocation',
         'onGetMessage', 
 //        'onGetNormalizedJid',
@@ -45,7 +46,7 @@ class MyEvents extends AllEvents
         'onGetRequestLastSeen',
 //        'onGetServerProperties',
 //        'onGetServicePricing',
-//        'onGetStatus',
+        'onGetStatus',
         'onGetSyncResult',
 //        'onGetVideo',
 //        'onGetvCard',
@@ -122,7 +123,7 @@ class MyEvents extends AllEvents
 		}
 
 		$isGroup = false;
-		if (!$stmt->bind_param("ssssii", $body, $id, $from, $from, $isGroup, $resource, $time))
+		if (!$stmt->bind_param("ssssiii", $body, $id, $from, $from, $isGroup, $resource, $time))
 		{
 			  echo "Binding parameters failed: (" . $stmt->errno . ") " . $stmt->error;
 		}
@@ -149,6 +150,21 @@ class MyEvents extends AllEvents
 
 		$this->onGetMessage($mynumber, $from, $id, $type, $time, $name, $caption, $resourceID);
 	}
+    public function onGetGroupImage($mynumber, $from_group_jid, $from_user_jid, $id, $type, $time, $name, $size, $url, $file, $mimeType, $fileHash, $width, $height, $preview, $caption) 
+    {
+        $path = "media/" . $file;
+		$thumbnailPath = "media/prev_" . $file;
+		file_put_contents($path, fopen($url, 'r'));
+		file_put_contents($thumbnailPath, $preview);	
+		
+		$stmt = $this->mysqli->prepare("INSERT INTO resources (type, path, thumbnail_path) VALUES ('picture', ?, ?)");	
+		$stmt->bind_param("ss", $path, $thumbnailPath);
+		$stmt->execute();
+		
+		$resourceID = $this->mysqli->insert_id;
+
+		$this->onGetGroupMessage($mynumber, $from_group_jid, $from_user_jid, $id, $type, $time, $name, $caption, $resourceID);
+    }
 	
 	public function onMessageReceivedClient($mynumber, $from, $id, $type, $time, $participant) 
 	{
@@ -215,9 +231,10 @@ class MyEvents extends AllEvents
         {
             $this->whatsProt->sendGetProfilePicture($newContacts[$i], true); 
             $this->whatsProt->sendGetProfilePicture($newContacts[$i], false);  
-            $this->whatsProt->sendPresenceSubscription($newContacts[$i]);            
+            $this->whatsProt->sendPresenceSubscription($newContacts[$i]);  
         }
         $this->whatsProt->sendSync($newContacts);
+        $this->whatsProt->sendGetStatuses($newContacts);
     }
 
 	public function onGetProfilePicture($mynumber, $from, $type, $data) 
@@ -265,15 +282,15 @@ class MyEvents extends AllEvents
         }
     }
 
-	public function onGetGroupMessage($mynumber, $from_group_jid, $from_user_jid, $id, $type, $time, $name, $body) 
+	public function onGetGroupMessage($mynumber, $from_group_jid, $from_user_jid, $id, $type, $time, $name, $body, $resource = NULL) 
 	{
-		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, id, sender_id, chat_id, isGroup, status, time) VALUES (?, ?, ?, ?, ?, 2, ?)")))
+		if (!($stmt = $this->mysqli->prepare("INSERT INTO messages (text, id, sender_id, chat_id, isGroup, status, resource, time) VALUES (?, ?, ?, ?, ?, 2, ?, ?)")))
 		{
 			  echo "Prepare failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
 
 		$isGroup = true;
-		if (!$stmt->bind_param("ssssi", $body, $id, $from_user_jid, $from_group_jid, $isGroup, $time))
+		if (!$stmt->bind_param("ssssiii", $body, $id, $from_user_jid, $from_group_jid, $isGroup, $resource, $time))
 		{
 			  echo "Binding parameters failed: (" . $stmt->errno . ") " . $stmt->error;
 		}
@@ -310,5 +327,13 @@ class MyEvents extends AllEvents
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}		
 	}
+
+    public function onGetStatus($mynumber, $from, $requested, $id, $time, $data) 
+    {
+        if (!$this->mysqli->query("UPDATE contacts SET status='$data' WHERE id='$from'"))
+		{
+			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
+		}
+    }
 	
 }

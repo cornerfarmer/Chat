@@ -69,7 +69,7 @@ while (running($time)) {
 			}
 			else
 			{	
-				$id = $w->sendMessageImage($row['chat_id'], $row['path']);
+				$id = $w->sendMessageImage($row['chat_id'], $row['path'], false, 0, "", $row['text']);
 			}
 			if (!$mysqli->query("UPDATE messages SET status=1, id='$id', time=".time()." WHERE intern_id=" . $row["intern_id"]))
 			{

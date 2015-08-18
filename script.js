@@ -120,6 +120,7 @@ function getContacts()
 				var contact = contacts[x[i].getElementsByTagName("ID")[0].textContent];
 				contact["name"] = x[i].getElementsByTagName("Name")[0].textContent;
 				contact["lastSeen"] = x[i].getElementsByTagName("LastSeen")[0].textContent;
+				contact["status"] = x[i].getElementsByTagName("Status")[0].textContent;
 				if (x[i].getElementsByTagName("Resource").length > 0)				
 				{
 					contact["thumbnailPicture"] = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("ThumbnailPath")[0].textContent;	
@@ -277,7 +278,7 @@ function openChat(group, id)
 		newChat += "<h4>" + contacts[id]["name"] + "</h4>";
 		newChat += "<div class=\"chat_picture\">" + getCodeForPicture(contacts[id]["picture"], contacts[id]["thumbnailPicture"] , "chats", contacts[id]["name"]) + "</div>";
 		newChat += "<p>Status:<br>" + contacts[id]["status"] + "</p>";
-		newChat += "<p>Nummer:<br>" + contacts[id]["number"] + "</p>";
+		newChat += "<p>Nummer:<br>+" + idFromJid(id) + "</p>";
 		newChat += "<p>" + contacts[id]["lastSeen"] + "</p>";		
 	}
 	else
