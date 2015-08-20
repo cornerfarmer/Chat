@@ -2,17 +2,15 @@
 var countdown;
 var contacts = [];
 var groups = [];
-var init = 0;
-var newestMessageTime = -1;
+var lastCheckTime = -1;
 var answerID;
 var answerGroup;
 
 $(document).ready(function() {
 	emoji.allow_native = false;
 	emoji.use_css_imgs = true;
-    window.setInterval(timer, 1000);
-	$("#refresh_button").attr("disabled", "disabled");
-	getContacts();
+	window.setInterval(timer, 1000);
+	countdown = 1;
 	$('#inputField').keydown(function(event) {
         if (event.shiftKey!=1 && event.keyCode == 13 && $("#inputFieldWrapper").css("visibility") === "visible" && $("#refresh_button").attr("disabled") === undefined) {
             sendMessage();
@@ -79,7 +77,7 @@ function refresh()
 	$("#refresh_button").attr("disabled", "disabled");
 	$("#refresh_button").text("Refreshing...");
 	
-	getMessages();
+	getNews();
 }
 
 function restartTimer()
@@ -104,125 +102,119 @@ function timer()
 	}
 }
 
-function getContacts() 
+function getContentOfXMLTag(parent, tagName)
+{
+    return parent.getElementsByTagName(tagName)[0].textContent
+}
+
+function getNews()
 {
 	var xmlhttp = new XMLHttpRequest();
 	xmlhttp.onreadystatechange=function()
 	{
 		if (xmlhttp.readyState==4 && xmlhttp.status==200)
 		{
-			document.getElementById('contacts').innerHTML = "";
-			x = xmlhttp.responseXML.documentElement.getElementsByTagName("Contact");
-			for (i = 0; i < x.length; i++)
-			{
-				var id = x[i].getElementsByTagName("ID")[0].textContent;
-				contacts[id] = [];
-				var contact = contacts[x[i].getElementsByTagName("ID")[0].textContent];
-				contact["name"] = x[i].getElementsByTagName("Name")[0].textContent;
-				contact["lastSeen"] = x[i].getElementsByTagName("LastSeen")[0].textContent;
-				contact["status"] = x[i].getElementsByTagName("Status")[0].textContent;
-				if (x[i].getElementsByTagName("Resource").length > 0)				
+		    documentXML = xmlhttp.responseXML.documentElement;
+		    lastCheckTime = getContentOfXMLTag(documentXML, "LastCheckTime");
+		    messages = documentXML.getElementsByTagName("Message");
+		    // Contacts
+		    contactsXML = documentXML.getElementsByTagName("Contact");
+		    for (i = 0; i < contactsXML.length; i++) {
+		        var id = getContentOfXMLTag(contactsXML[i], "ID");
+		        contacts[id] = [];
+		        contacts[id]["id"] = id;
+		        contacts[id]["name"] = getContentOfXMLTag(contactsXML[i], "Name");
+		        contacts[id]["lastSeen"] = getContentOfXMLTag(contactsXML[i], "LastSeen");
+		        contacts[id]["status"] = getContentOfXMLTag(contactsXML[i], "Status");
+		        resource = contactsXML[i].getElementsByTagName("Resource");
+		        if (resource.length > 0) {
+		            contacts[id]["thumbnailPicture"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
+		            contacts[id]["picture"] = getContentOfXMLTag(resource[0], "Path");
+		        }
+		        else {
+		            contacts[id]["picture"] = "";
+		            contacts[id]["thumbnailPicture"] = "";
+		        }
+		        if (id != "0")
+		            addContact(contacts[id]);
+		    }
+		    // Groups
+		    groupsXML = documentXML.getElementsByTagName("Group");
+		    for (i = 0; i < groupsXML.length; i++) {
+		        var id = getContentOfXMLTag(groupsXML[i], "ID");
+		        groups[id] = [];
+		        groups[id]["name"] = getContentOfXMLTag(groupsXML[i], "Name");
+		    }
+            // Open chats
+		    for (i = 0; i < messages.length; i++)
+		    {
+		        id = getContentOfXMLTag(messages[i], "ChatID");
+		        if (getContentOfXMLTag(messages[i], "Type") === "group")
 				{
-					contact["thumbnailPicture"] = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("ThumbnailPath")[0].textContent;	
-					contact["picture"] = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("Path")[0].textContent;	
-				}
-				else
-				{
-					contact["picture"] = "";
-					contact["thumbnailPicture"] = "";
-				}
-				if (id != "0")
-				    document.getElementById('contacts').innerHTML += "<div class=\"contact mdl-card mdl-shadow--2dp\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false,'" + id + "')\" ><div class=\"name\">" + contact["name"] + "</div><div class=\"status\">" + contact["lastSeen"] + "</div></div></div>";
-			}
-			if (init++ === 0)
-				getGroups();
-		}
-	}
-	xmlhttp.open("POST", "getContacts.php", true);
-	xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-	xmlhttp.send();	
-}
-
-function getGroups()
-{
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange=function()
-	{
-		if (xmlhttp.readyState==4 && xmlhttp.status==200)
-		{
-			x = xmlhttp.responseXML.documentElement.getElementsByTagName("Group");
-			for (i = 0; i < x.length; i++)
-			{
-			    var id = x[i].getElementsByTagName("ID")[0].textContent;
-			    groups[id] = [];
-			    var group = groups[id];
-				group["name"] = x[i].getElementsByTagName("Name")[0].textContent;				
-			}
-			if (init++ === 1)
-				getMessages();
-		}
-	}
-	xmlhttp.open("POST", "getGroups.php", true);
-	xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-	xmlhttp.send();
-}
-
-function getMessages()
-{
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange=function()
-	{
-		if (xmlhttp.readyState==4 && xmlhttp.status==200)
-		{			
-			x = xmlhttp.responseXML.documentElement.getElementsByTagName("Message");
-			for (i = 0; i < x.length; i++)
-			{
-				if (x[i].getElementsByTagName("Type")[0].textContent === "group")
-				{
-				    if ($("#g" + idFromJid(x[i].getElementsByTagName("ChatID")[0].textContent)).length === 0)
+		            if ($("#g" + idFromJid(id)).length === 0)
 					{
-						openChat(true, x[i].getElementsByTagName("ChatID")[0].textContent);
+		                openChat(true, id);
 					}
 				}
 				else
 				{
-				    if ($("#s" + idFromJid(x[i].getElementsByTagName("ChatID")[0].textContent)).length === 0)
+		            if ($("#s" + idFromJid(id)).length === 0)
 					{
-						openChat(false, x[i].getElementsByTagName("ChatID")[0].textContent);
+		                openChat(false, id);
 					}
 				}
-			}
-			for (i = 0; i < x.length; i++)
+		    }
+            // Open messages
+		    for (i = 0; i < messages.length; i++)
 			{ 
-				var type, thumbnailPath, path;
-				if (x[i].getElementsByTagName("Resource").length > 0)				
+		        message = [];
+		        resource = messages[i].getElementsByTagName("Resource");
+		        if (resource.length > 0)
 				{
-					type = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("Type")[0].textContent;
-					thumbnailPath = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("ThumbnailPath")[0].textContent;
-					path = x[i].getElementsByTagName("Resource")[0].getElementsByTagName("Path")[0].textContent;
+		            message["resourceType"] = getContentOfXMLTag(resource[0], "Type");
+		            message["resourceThumbnailPath"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
+		            message["resourcePath"] = getContentOfXMLTag(resource[0], "Path");
 				}
 				else
 				{
-					type = "";
-					thumbnailPath = "";
-					path = "";
-				}
-				addMessage(x[i].getElementsByTagName("Type")[0].textContent === "group", x[i].getElementsByTagName("ChatID")[0].textContent, x[i].getElementsByTagName("ID")[0].textContent, x[i].getElementsByTagName("Text")[0].textContent, x[i].getElementsByTagName("Sender")[0].textContent, x[i].getElementsByTagName("Time")[0].textContent, x[i].getElementsByTagName("Status")[0].textContent, type, path, thumbnailPath);
-				newestMessageTime = x[i].getElementsByTagName("Timestamp")[0].textContent;
-			}
-			
+		            message["resourceType"] = "";
+		            message["resourceThumbnailPath"] = "";
+		            message["resourcePath"] = "";
+		        }
+		        message["group"] = getContentOfXMLTag(messages[i], "Type") === "group";
+		        message["chatID"] = getContentOfXMLTag(messages[i], "ChatID");
+		        message["messageID"] = getContentOfXMLTag(messages[i], "ID");
+		        message["text"] = getContentOfXMLTag(messages[i], "Text");
+		        message["senderID"] = getContentOfXMLTag(messages[i], "Sender");
+		        message["time"] = getContentOfXMLTag(messages[i], "Time");
+		        message["status"] = getContentOfXMLTag(messages[i], "Status");
+		        message["status"] = getContentOfXMLTag(messages[i], "Status");
+		        addMessage(message);		        
+		    }
+            // Change Message Status
+		    messageStatusChanges = documentXML.getElementsByTagName("MessageStatus");
+		    for (i = 0; i < messageStatusChanges.length; i++)
+		    {
+		        setStatusOfMessage(getContentOfXMLTag(messageStatusChanges[i], "ID"), getContentOfXMLTag(messageStatusChanges[i], "Status"));
+		    }
+		    
 			restartTimer();
 		}
 	}
-	xmlhttp.open("POST", "getMessages.php", true);
+	xmlhttp.open("POST", "getNews.php", true);
 	xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-	xmlhttp.send("newestMessageTime=" + newestMessageTime);
+	xmlhttp.send("lastCheckTime=" + lastCheckTime);
 }
 
-function addMessage(group, chatID, messageID, text, senderID, time, status, resourceType, resourcePath, resourceThumbnailPath)
+function addContact(contact)
 {
-	var newMessage = "<div id=\"m" + messageID + "\" class=\"mdl-card mdl-shadow--2dp message ";
-	if (senderID == 0)
+    document.getElementById('contacts').innerHTML += "<div class=\"contact mdl-card mdl-shadow--2dp\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false,'" + contact["id"] + "')\" ><div class=\"name\">" + contact["name"] + "</div><div class=\"status\">" + contact["lastSeen"] + "</div></div></div>";
+}
+
+function addMessage(message)
+{
+    var newMessage = "<div id=\"m" + message["messageID"] + "\" class=\"mdl-card mdl-shadow--2dp message ";
+    if (message["senderID"] == 0)
 	{
 		newMessage += "message_own\"";
 		newMessage += " ><div class=\"message_header mdl-card__title \">";
@@ -233,25 +225,25 @@ function addMessage(group, chatID, messageID, text, senderID, time, status, reso
 		newMessage += " ><div class=\"message_header mdl-card__title mdl-color--primary-dark\">";
 	}
 	
-	newMessage += contacts[senderID]["name"] + "<div class = \"message-status\"><span class=\"message-status-read message-status-off\">I</span><span class=\"message-status-received message-status-off\">I</span><span  class=\"message-status-send message-status-off\">I</span></div>";
+	newMessage += contacts[message["senderID"]]["name"] + "<div class = \"message-status\"><span class=\"message-status-read message-status-off\">I</span><span class=\"message-status-received message-status-off\">I</span><span  class=\"message-status-send message-status-off\">I</span></div>";
 	newMessage += "</div><div class=\"message_body mdl-color-text--grey-700 mdl-card__supporting-text\">";
-	if (resourceType === "picture")
+	if (message["resourceType"] === "picture")
 	{
-		newMessage += "<div class=\"message_resource\">" + getCodeForPicture(resourcePath, resourceThumbnailPath, "message" + chatID, "Von " + contacts[senderID]["name"]) + "</div>";
+	    newMessage += "<div class=\"message_resource\">" + getCodeForPicture(message["resourcePath"], message["resourceThumbnailPath"], "message" + message["chatID"], "Von " + contacts[message["senderID"]]["name"]) + "</div>";
 	}
 
-	newMessage += "<div>" + emoji.replace_unified(text) + "</div>";
-	newMessage += "<div class=\"message-time\">" + time + "</div>";
+	newMessage += "<div>" + emoji.replace_unified(message["text"]) + "</div>";
+	newMessage += "<div class=\"message-time\">" + message["time"] + "</div>";
 	newMessage += "</div></div>";
 	
 	var chat;
-	if (group) 
-	    chat = "#g" + idFromJid(chatID) + " .messages";
+	if (message["group"])
+	    chat = "#g" + idFromJid(message["chatID"]) + " .messages";
 	else
-	    chat = "#s" + idFromJid(chatID) + " .messages"
+	    chat = "#s" + idFromJid(message["chatID"]) + " .messages"
 	$(chat).append(newMessage);
 
-	setStatusOfMessage(messageID, status);
+	setStatusOfMessage(message["messageID"], message["status"]);
 
 	$(chat).clearQueue();
 	var offset = $(chat).children().last().offset().left - $(chat).children().first().offset().left;	
@@ -300,7 +292,7 @@ function sendMessage()
 		if (xmlhttp.readyState==4 && xmlhttp.status==200)
 		{
 			document.getElementById("inputField").value = "";
-			getMessages();
+			getNews();
 			hideInputField();
 		}
 		$('#refresh_button').removeAttr("disabled");

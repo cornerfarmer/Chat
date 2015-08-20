@@ -133,6 +133,11 @@ class MyEvents extends AllEvents
 		}
 		$stmt->close();
 		$this->whatsProt->sendMessageRead($from, $id, ""); 
+        session_start();
+        $_SESSION["messages"][$id] = isset($_SESSION["messages"][$id]) ? array() : $_SESSION["messages"][$id];
+        $_SESSION["messages"][$id]["new"] = true;
+        session_write_close();
+        var_dump($_SESSION);
 	}
 	
 	public function onGetImage($mynumber, $from, $id, $type, $time, $name, $size, $url, $file, $mimeType, $fileHash, $width, $height, $preview, $caption)
@@ -173,6 +178,11 @@ class MyEvents extends AllEvents
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
+        session_start();
+        $_SESSION["messages"][$id] = isset($_SESSION["messages"][$id]) ? array() : $_SESSION["messages"][$id];
+        $_SESSION["messages"][$id]["status"] = true;
+        var_dump($_SESSION);
+        session_write_close();
 	}
     public function onMessageReceivedServer($mynumber, $from, $id, $type, $time)
 	{		
@@ -180,6 +190,11 @@ class MyEvents extends AllEvents
 		{
 			echo "Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error;
 		}
+        session_start();
+        $_SESSION["messages"][$id] = isset($_SESSION["messages"][$id]) ? array() : $_SESSION["messages"][$id];
+        $_SESSION["messages"][$id]["status"] = true;
+        var_dump($_SESSION);
+        session_write_close();
 	}
 	
 	public function onGroupsChatCreate($mynumber, $gid) 
@@ -300,6 +315,10 @@ class MyEvents extends AllEvents
 		}
 		$stmt->close();
 		$this->whatsProt->sendGroupMessageRead($from_group_jid, $from_user_jid, $id, ""); 
+        session_start();
+        $_SESSION["messages"][$id] = isset($_SESSION["messages"][$id]) ? array() : $_SESSION["messages"][$id];
+        $_SESSION["messages"][$id]["new"] = true;
+        session_write_close();
 	}
 	
 	public function onPresenceAvailable($mynumber, $from)

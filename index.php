@@ -2,6 +2,9 @@
 <?php
 session_start();
 $_SESSION["running"] = time();
+$_SESSION["messages"] = array();
+$_SESSION["contacts"] = array();
+$_SESSION["groups"] = array();
 ?>
 <html>
 <head>
