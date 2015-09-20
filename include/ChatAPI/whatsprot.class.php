@@ -3356,6 +3356,22 @@ class WhatsProt
                             )
                         );
                     }
+                    else if ($node->hasChild('demote')) {
+                        $demotedJIDs = array();
+                        foreach ($node->getChild(0)->getChildren() AS $cn) {
+                            $demotedJIDs[] = $cn->getAttribute('jid');
+                        }
+                        $this->eventManager()->fire("onGroupsParticipantsDemote",
+                            array(
+                                $this->phoneNumber,
+                                $node->getAttribute('from'),        //Group-JID
+                                $node->getAttribute('t'),           //Time
+                                $node->getAttribute('participant'), //Issuer-JID
+                                $node->getAttribute('notify'),      //Issuer-Name
+                                $demotedJIDs,
+                            )
+                        );
+                    }
                     else if ($node->hasChild('modify')) {
                         $this->eventManager()->fire("onGroupsParticipantChangedNumber",
                             array(

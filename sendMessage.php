@@ -1,17 +1,36 @@
 <?php	
-	$message = $_POST["message"];
-	$group = ($_POST["group"] === "true" ? 1 : 0);
-	$id = $_POST["id"];
+    require_once(__DIR__.'/include/sqAES.php');
+    $theKey = "test";
+    session_start();
+	$message = sqAES::decrypt($theKey, $_POST["message"]);
+	$group = (int)sqAES::decrypt($theKey, $_POST["group"]);
+	$id = sqAES::decrypt($theKey, $_POST["id"]);
 	
 	$mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
 
-	if ($_FILES["file"] !== NULL)
+	if ($_POST["file"] !== NULL)
 	{
-		$filename = "./media/" . (string)sha1_file($_FILES['file']['tmp_name']) . ".png";
-		move_uploaded_file($_FILES['file']['tmp_name'], $filename);
+        $data = sqAES::decrypt($theKey, $_POST["file"]);
+		list($type, $data) = explode(';', $data);
+		list(, $data)      = explode(',', $data);
+		$data = base64_decode($data);
+
+        $extension = substr($type, strrpos($type, "/") + 1);
+		$filename = "./media/" . (string)sha1($data) . ".$extension";
+        file_put_contents($filename, $data);
+        
+        if (in_array($extension, array('jpg', 'jpeg', 'gif', 'png'))) {
+			$type = 'picture';
+        } else if (in_array($extension, array('3gp', 'mp4', 'mov', 'avi'))) {
+			$type = 'video';
+        } else if (in_array($extension, array('3gp', 'caf', 'wav', 'mp3', 'wma', 'ogg', 'aif', 'aac', 'm4a'))) {
+			$type = 'audio';
+        } else {
+            trigger_error ("Given resource is not valid");
+        }
 		
-		$stmt = $mysqli->prepare("INSERT INTO resources (type, path, thumbnail_path) VALUES ('picture', ?, ?)");	
-		$stmt->bind_param("ss", $filename, $filename);
+		$stmt = $mysqli->prepare("INSERT INTO resources (type, path, thumbnail_path) VALUES (?, ?, ?)");	
+		$stmt->bind_param("sss", $type, $filename, $filename);
 		$stmt->execute();
 		
 		$resourceID = $mysqli->insert_id;
@@ -26,6 +45,7 @@
 	}
 	
 	$stmt->execute();
-	 session_start();
+    $messageID = $mysqli->insert_id;
 	$_SESSION["messagesToSend"] = true;
+    $_SESSION["messages"][$messageID]["new"] = true;
 ?>

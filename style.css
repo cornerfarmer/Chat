@@ -1,35 +1,178 @@
-#content
+body
 {
-	width: calc(100% - 200px);	
+    height: 100%;
+    overflow: hidden;
 }
 
-#contacts
+#content
 {
-	width: 180px;
+	width: calc(100% - 180px);	
+    height: 100%;
+}
+
+#content::-webkit-scrollbar 
+{ 
+	width: 0 !important 
+}
+
+#sidebar
+{
+    width: 180px;
 	position: fixed;
 	right: 0;
 	top: 0;
 	height:100%;
 	z-index: 30;
+    overflow:hidden;
 }
 
-.contact
+#groupsContacts
 {
-	min-height: auto;
+    display: flex;
+    flex-direction:row;
+    width: 200%;    
+    height: 100%;
+}
+
+#contacts, #groups
+{
+	width: 180px;
+    height: calc(100% - 40px);
+}
+
+#sidebar-switch
+{
+    bottom: 0px;
+    position: absolute;
+    margin: 2px;
+    width: 98%;
+}
+
+#add-contact-button, #create-group-button
+{
+    margin: 2px;
+    width: 98%;
+}
+
+.contact, #groups .group
+{
+    min-height: auto;
 	margin: 3px;
 	padding: 2px;
-	width: auto;
-	flex-direction: row;
-	align-items: center;
+	width: auto;	
 }
 
-.contact_info
+.contact, .group-header
+{	
+	align-items: center;
+    flex-direction: row;
+    display: flex;
+}
+
+.group-details-small
+{
+    width: 100%;  
+    display: none;
+    flex-direction: row;
+}
+
+.group-details-small-shown
+{
+    display: flex;
+}
+
+.contact-small, .member-add
+{
+    height: auto;
+    min-height: initial;
+    width: 100%;
+    margin: 1px 0;
+    padding: 2px;
+    color: white;
+    cursor: pointer;
+}
+
+.member-remove
+{
+     color: rgb(255, 82, 82);
+     cursor: pointer;
+}
+
+.admin-changeable
+{
+     cursor: pointer;
+}
+
+.admin-inactive
+{
+     color: gray;
+}
+
+.admin-inactive.admin-changeable:hover
+{
+     color: gold;
+}
+
+.admin-active
+{
+     color: gold;
+}
+
+.admin-active.admin-changeable:hover
+{
+     color: gray;
+}
+
+#groups .group
+{
+    display: flex;
+    flex-direction: column;
+}
+
+.contact_info, .group_info
 {
 	padding-left: 10px;
 	display: flex;
 	flex-direction: column;
 	cursor: pointer;
     font-size: 9pt;
+    width: 100%;
+}
+
+#overlay
+{
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255,255,255, 0.7);
+    text-align: center;
+    vertical-align: central;
+    z-index: 10;
+    display: none;
+}
+
+#overlay-text
+{
+    position: relative;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 20pt;
+}
+
+#inputFileContainer
+{
+    display: flex;
+    flex-direction: row;
+}
+
+#inputFileContainer i 
+{
+    align-self: center;
+    cursor: pointer;
+    color: rgb(255, 82, 82);
 }
 
 #inputFieldSpacer
@@ -132,12 +275,17 @@
 }
 
 
+#chats
+{
+    padding-right: 25px;
+}
 
 .chat
 {
 	flex-direction: row;
 	overflow: visible;
 	height: 300px;
+    margin-top: 25px;
 }
 
 .chat_active
@@ -190,6 +338,13 @@
 	flex-direction: row;
 	align-items: flex-start;
 	overflow-x: auto;
+    background-color: lightgray;
+}
+
+.messages-space
+{
+    min-width: 30px;
+    height: 20px;
 }
 
 .message
@@ -262,6 +417,11 @@
     margin: 0 1px;
 }
 
+.message_other .message-status-read.message-status-off
+{
+    cursor: pointer;
+}
+
 .message-time
 {
     font-size: 7pt;   
@@ -283,20 +443,20 @@
 }
 
 .chat_picture .card-image.mdl-card {
-	width: 100px;
-	height: 100px;
+	width: 96px;
+	height: 96px;
 }
-.contact .card-image {
+.contact .card-image, .group .card-image {
 	background-size:cover !important;
 }
 
 
-.contact .card-image.mdl-card {
+.contact .card-image.mdl-card, .group .card-image.mdl-card {
 	width: 54px;
 	height: 54px;
 }
 
 .message_resource .card-image.mdl-card {
-	width: 100px;
-	height: 100px;
+	width: 96px;
+	height: 96px;
 }

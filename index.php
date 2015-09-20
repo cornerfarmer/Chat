@@ -5,6 +5,7 @@ $_SESSION["running"] = time();
 $_SESSION["messages"] = array();
 $_SESSION["contacts"] = array();
 $_SESSION["groups"] = array();
+$_SESSION["messagesToSetAsRead"] = array();
 ?>
 <html>
 <head>
@@ -15,14 +16,26 @@ $_SESSION["groups"] = array();
 	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 	<link rel="stylesheet" href="style.css">
 	<link media="all" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium" type="text/css" rel="stylesheet">
-	<link href=lightbox.css" rel="stylesheet"> 
 	<link href="include/emoji.css" rel="stylesheet" type="text/css" />
 	<script src="include/emoji.js" type="text/javascript"></script>
 	<link href="include/emojisprite.css" rel="stylesheet" type="text/css" />
 	<link rel="stylesheet" href="include/jquery.mCustomScrollbar.css" />
 	<script src="include/jquery.mCustomScrollbar.js"></script>
+    <link type="text/css" rel="stylesheet" href="include/lightGallery/css/lightGallery.css" /> 
+    <script src="include/lightGallery/js/lightgallery.js"></script>
+    <script src="include/lightGallery/js/lg-thumbnail.min.js"></script>
+    <script src="include/lightGallery/js/lg-fullscreen.min.js"></script>    
+    <script src="include/lightGallery/js/lg-video.js"></script>   
+
+    <link type="text/css" rel="stylesheet" href="include/miniAudioPlayer/css/jQuery.mb.miniAudioPlayer.min.css" />       
+    <script type="text/javascript" src="include/miniAudioPlayer/jQuery.mb.miniAudioPlayer.js"></script>
+
+    <script type="text/javascript" src="include/vcard.js"></script>
+    <script type="text/javascript" src=".include/vcf.js"></script>
+
+    <script type="text/javascript" src="include/jquery.jcryption.3.1.0.js"></script>
 </head>
-<body>	
+<body>
 	<div id="content">
 		<div id="refresh_button_wrapper">
 			<button id="refresh_button" onclick="refresh()" class="mdl-button mdl-js-ripple-effect mdl-js-button">
@@ -30,54 +43,58 @@ $_SESSION["groups"] = array();
 			</button>
 		</div>
 		<div id="chats" class="mdl-grid">
-		<div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col chat">		
-			<div class="mdl-color--primary-dark chat_description">
-				  <h4>Name</h4>
-				  <p>Bild</p>
-				  <p>Status:<br>blabla</p>
-				  <p>Nummer:<br>5424554364756</p>
-				  <p>zul. online</p>
-			</div>
-			<button class="answer_button mdl-button mdl-js-ripple-effect mdl-js-button mdl-button--fab mdl-color--accent">
-				  <i class="material-icons mdl-color-text--white" role="presentation">reply</i>
-				  <span class="visuallyhidden">reply</span>
-			</button>
-			<div class="mdl-card__supporting-text messages">			
-				<div class="mdl-card mdl-shadow--2dp message message_other" >
-					<div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>		
-				<div class="mdl-card mdl-shadow--2dp message message_own" >
-					<div class="message_header mdl-card__title">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>	
-				<div class="mdl-card mdl-shadow--2dp message message_other" >
-					<div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>		
-				<div class="mdl-card mdl-shadow--2dp message message_own" >
-					<div class="message_header mdl-card__title">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>	
-				<div class="mdl-card mdl-shadow--2dp message message_other" >
-					<div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>		
-				<div class="mdl-card mdl-shadow--2dp message message_own" >
-					<div class="message_header mdl-card__title">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>	
-				<div class="mdl-card mdl-shadow--2dp message message_other" >
-					<div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>		
-				<div class="mdl-card mdl-shadow--2dp message message_own" >
-					<div class="message_header mdl-card__title">Name</div>
-					<div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
-				</div>	
-			</div>
-		</div>
-		<div id="inputFieldSpacer"></div>
+            
+            <!--
+		    <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--12-col chat">		
+			    <div class="mdl-color--primary-dark chat_description">
+				      <h4>Name</h4>
+				      <p>Bild</p>
+				      <p>Status:<br>blabla</p>
+				      <p>Nummer:<br>5424554364756</p>
+				      <p>zul. online</p>
+			    </div>
+			    <button class="answer_button mdl-button mdl-js-ripple-effect mdl-js-button mdl-button--fab mdl-color--accent">
+				      <i class="material-icons mdl-color-text--white" role="presentation">reply</i>
+				      <span class="visuallyhidden">reply</span>
+			    </button>
+			    <div class="mdl-card__supporting-text messages">			
+				    <div class="mdl-card mdl-shadow--2dp message message_other" >
+					    <div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>		
+				    <div class="mdl-card mdl-shadow--2dp message message_own" >
+					    <div class="message_header mdl-card__title">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>	
+				    <div class="mdl-card mdl-shadow--2dp message message_other" >
+					    <div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>		
+				    <div class="mdl-card mdl-shadow--2dp message message_own" >
+					    <div class="message_header mdl-card__title">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>	
+				    <div class="mdl-card mdl-shadow--2dp message message_other" >
+					    <div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>		
+				    <div class="mdl-card mdl-shadow--2dp message message_own" >
+					    <div class="message_header mdl-card__title">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>	
+				    <div class="mdl-card mdl-shadow--2dp message message_other" >
+					    <div class="message_header mdl-card__title mdl-color--primary-dark">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>		
+				    <div class="mdl-card mdl-shadow--2dp message message_own" >
+					    <div class="message_header mdl-card__title">Name</div>
+					    <div class="message_body mdl-color-text--grey-700 mdl-card__supporting-text">Dolore ex deserunt aute fugiat aute nulla ea sunt aliqua nisi cupidatat eu. Nostrud in laboris labore nisi amet do dolor eu fugiat consectetur elit cillum esse. </div>
+				    </div>	
+			    </div>
+		    </div>        
+		    
+        </div> -->
+         <div id="inputFieldSpacer"></div>          
 		<div id="inputFieldWrapper" class="mdl-shadow--3dp mdl-color--primary">
 			
 			<div id="emojis">
@@ -240,18 +257,32 @@ $_SESSION["groups"] = array();
 			</div>
 	
 			<div id="inputFieldInput">
-				<input type="file" id="inputFile" name="file" />
+				<div id="inputFileContainer" ><input type="file" id="inputFile" name="file" /><i class="material-icons" onclick="clearInputFile();">highlight_off</i></div>
 				<textarea id="inputField"></textarea>
 			</div>
 			<div id="inputFieldButtons">
 				<button id="cancel_button" class=" mdl-button mdl-js-ripple-effect mdl-js-button" onclick="hideInputField()" >Abbrechen</button>
-				<button id="send_button" class=" mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent" onclick="sendMessage()" >Senden</button>
+				<button id="send_button" class=" mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent" onclick="sendButtonOnClick()" >Senden</button>
 			</div>
 		</div>
+        
 	</div>
-	</div>
-	<div id="contacts" class="mdl-shadow--3dp mdl-color--primary-dark">
-	<div>
+    <div id="overlay" onclick="hideInputField()">
+        <div id="overlay-text">
+            Test
+        </div>
+    </div>
+    <div id="sidebar" class="mdl-shadow--3dp mdl-color--primary-dark">
+        <div id="groupsContacts">
+	        <div id="contacts" >  
+                <button onclick="newContact();" class="mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent" id="add-contact-button" >Add contact</button>       
+	        </div>
+            <div id="groups">  
+                <button onclick="newGroup();" class="mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent" id="create-group-button" >Create group</button>     
+	        </div>
+        </div>
+        <button id="sidebar-switch" onclick="switchSidebar();" class="mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent" >Switch</button>
+    </div>
 	<script src="lightbox.js"></script>
 </body>
 </html> 
