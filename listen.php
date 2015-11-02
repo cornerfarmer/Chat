@@ -32,8 +32,8 @@ function running($time, $starttime)
 }
 
 
-require_once('include/ChatAPI/whatsprot.class.php');
-require_once 'include/ChatAPI/events/MyEvents.php';
+require_once('include/ChatAPI/src/whatsprot.class.php');
+require_once 'include/ChatAPI/src/events/MyEvents.php';
 
 $username = "4915730395125";
 $nickname = "Dom Test";
@@ -45,7 +45,6 @@ $w = new WhatsProt($username, $nickname, $debug);
 $events = new MyEvents($w);
 $events->mysqli = $mysqli;
 $events->setEventsToListenFor($events->activeEvents);
-
 
 $lastPing = time();
 $w->connect(); // Connect to WhatsApp network
@@ -127,7 +126,7 @@ while (running($time, $starttime)) {
         else 
         {
             $w->sendMessageRead($message["sender_id"], $message["id"], "read"); 
-            $events->onMessageReceivedClient($username, $message["sender_id"], $message["id"], "read", time());
+            $events->onMessageReceivedClient($username, $message["sender_id"], $message["id"], "read", time(), NULL);
         }
     }
 

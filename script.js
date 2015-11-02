@@ -122,8 +122,10 @@ function listen() {
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function () {
         if (xmlhttp.readyState == 4) {
-            if (xmlhttp.responseText !== "")
+            if (xmlhttp.responseText !== "") {
                 console.log("Error occured in listen():" + xmlhttp.responseText);
+                alert("Error occured in listen()");
+            }
             else
                 window.setTimeout(listen, 100);
         }
