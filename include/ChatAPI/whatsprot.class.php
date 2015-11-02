@@ -2147,14 +2147,14 @@ class WhatsProt
      * @param  mixed $debugMsg The debug message.
      * @return bool
      */
-    protected function debugPrint($debugMsg)
+    public function debugPrint($debugMsg)
     {
         if ($this->debug) {
             if (is_array($debugMsg) || is_object($debugMsg)) {
-                print_r($debugMsg);
+                file_put_contents("logs/log-" . date("d-m-y", time()) . ".html", print_r($debugMsg), FILE_APPEND);
             }
             else {
-                echo $debugMsg;
+                file_put_contents("logs/log-" . date("d-m-y", time()) . ".html", $debugMsg, FILE_APPEND);
             }
             return true;
         }
@@ -2440,7 +2440,7 @@ class WhatsProt
      *  Number to process
      * @return string
      */
-    protected function getJID($number)
+    public function getJID($number)
     {
         if (!stristr($number, '@')) {
             //check if group message

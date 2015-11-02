@@ -139,9 +139,22 @@ body
     width: 100%;
 }
 
+.group_info .emoji-wrap .emoji, .contact_info .emoji-wrap .emoji
+{
+   transform: scale(0.75);
+   margin: -2px;
+}
+
+.group_info .emoji-wrap, .contact_info .emoji-wrap
+{
+    width: 15px;   
+    height: 15px;
+    display:inline-block;
+}
+
 #overlay
 {
-    position: absolute;
+    position: fixed;
     left: 0px;
     top: 0px;
     width: 100%;
@@ -310,7 +323,10 @@ body
 #refresh_button
 {
 	margin: 10px;
+    display: none;
 }
+
+
 
 .chat_description
 {
@@ -367,6 +383,11 @@ body
 	margin-top: -15px;
 }
 
+.message_status
+{
+	align-self: center;
+}
+
 .message_own
 {
 	align-self: flex-end;
@@ -398,6 +419,10 @@ body
     color: white;
 }
 
+.message-new
+{
+    box-shadow: 0 2px 2px 0 rgba(255, 0, 0, 0.14), 0 3px 1px -2px rgba(255, 0, 0, 0.2), 0 1px 5px 0 rgba(255, 0, 0, 0.12);
+}
 
 .message_header
 {
@@ -436,7 +461,17 @@ body
     width: auto;
 	display: flex;
 	flex-direction: column;
+    word-wrap: break-word;
 }
+
+.message_body div:first-child:not(.message_resource):not(.playerTable)
+{
+    -moz-column-width: 140px;
+    max-height: 260px;
+    -moz-column-gap: 8px;
+}
+
+
 
 .card-image.mdl-card {
 	min-height: auto;

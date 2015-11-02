@@ -41,7 +41,12 @@ $_SESSION["messagesToSetAsRead"] = array();
 			<button id="refresh_button" onclick="refresh()" class="mdl-button mdl-js-ripple-effect mdl-js-button">
 				  Loading...
 			</button>
+            <input name="key" id="key" type="password" />
+            <button id="keyOK" onclick="setKey()" class="mdl-button mdl-js-ripple-effect mdl-js-button">
+			    OK
+		    </button>
 		</div>
+        
 		<div id="chats" class="mdl-grid">
             
             <!--

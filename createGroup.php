@@ -3,7 +3,9 @@
     $theKey = "test";
 	$name = sqAES::decrypt($theKey, $_POST["name"]);
     $member = sqAES::decrypt($theKey, $_POST["member"]);
-	
+	if (!$name)
+        die();
+
 	$mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
 
 	if ($_POST["file"] !== NULL)
@@ -27,8 +29,7 @@
 		$stmt->bind_param("sss", $type, $filename, $filename);
 		$stmt->execute();
 		
-		$resourceID = $mysqli->insert_id;	
-        echo $resourceID;
+		$resourceID = $mysqli->insert_id;
 	}
 	else
 	{

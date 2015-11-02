@@ -14,10 +14,11 @@ var MODE_ADDCONTACT = 4;
 var currentMode = MODE_NORMAL;
 
 var theKey;
+var notifications = 0;
 
 
-$(document).ready(function () {
-    theKey = "test"; //prompt("", "");
+function initialize() {
+    refreshTitle();
 	emoji.allow_native = false;
 	emoji.use_css_imgs = true;
 	window.setInterval(timer, 1000);
@@ -55,8 +56,17 @@ $(document).ready(function () {
 	$("#groups").mCustomScrollbar({
 	    theme: "minimal-dark"
 	});
+
 	clearInputFile();
-});
+}
+
+function setKey() {
+    theKey = $("#key").val();
+    $("#key").css("display", "none");
+    $("#keyOK").css("display", "none");
+    $("#refresh_button").css("display", "initial");
+    initialize();
+}
 
 function switchSidebar() {
     if (sidebarState === 0) {
@@ -108,6 +118,20 @@ function answerButtonOnClick(group, id)
     }
 }
 
+function listen() {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState == 4) {
+            if (xmlhttp.responseText !== "")
+                console.log("Error occured in listen():" + xmlhttp.responseText);
+            else
+                window.setTimeout(listen, 100);
+        }
+    }
+    xmlhttp.open("GET", "listen.php", true);
+    xmlhttp.send();
+}
+
 function cancelCurrentMode()
 {
     currentMode = MODE_NORMAL;
@@ -118,12 +142,15 @@ function cancelCurrentMode()
 function switchToMode(mode)
 {
     var text = "";
-    if (mode === MODE_ADDCONTACT)
+    if (mode === MODE_ADDCONTACT) {
         text = "Create a new contact...";
-    else if (mode === MODE_ADDMEMBER)
+    } else if (mode === MODE_ADDMEMBER) {
         text = "Add a member to the group...";
-    else if (mode === MODE_CREATEGROUP)
+        switchSidebar();
+    } else if (mode === MODE_CREATEGROUP) {
         text = "Create a new group...";
+        switchSidebar();
+    }
     currentMode = mode;
     $("#overlay").css("display", "initial");
     $("#overlay-text").html(text);
@@ -186,7 +213,6 @@ function getNews()
 		    parser = new DOMParser();
 		    xmlDoc = parser.parseFromString($.jCryption.decrypt(xmlhttp.responseText, theKey), "text/xml");
 		    documentXML = xmlDoc.documentElement;
-		    lastCheckTime = getContentOfXMLTag(documentXML, "LastCheckTime");
 		    messages = documentXML.getElementsByTagName("Message");
 		    // Contacts
 		    contactsXML = documentXML.getElementsByTagName("Contact");
@@ -201,20 +227,39 @@ function getNews()
 		        if (resource.length > 0) {
 		            contacts[id]["thumbnailPicture"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
 		            contacts[id]["picture"] = getContentOfXMLTag(resource[0], "Path");
+		            contacts[id]["thumbnailHeight"] = getContentOfXMLTag(resource[0], "ThumbnailHeight");
+		            contacts[id]["thumbnailWidth"] = getContentOfXMLTag(resource[0], "ThumbnailWidth");
 		        }
 		        else {
 		            contacts[id]["picture"] = "";
 		            contacts[id]["thumbnailPicture"] = "";
+		            contacts[id]["thumbnailHeight"] = "";
+		            contacts[id]["thumbnailWidth"] = "";
 		        }
 		        if (id != "0")
 		            addContact(contacts[id]);
+		    }
+		    // Change contact picture
+		    contactPictureChanges = documentXML.getElementsByTagName("ContactPicture");
+		    for (i = 0; i < contactPictureChanges.length; i++) {
+		        var id = getContentOfXMLTag(contactPictureChanges[i], "ID");
+		        resource = contactPictureChanges[i].getElementsByTagName("Resource");
+		        if (resource.length > 0) {
+		            contacts[id]["thumbnailPicture"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
+		            contacts[id]["picture"] = getContentOfXMLTag(resource[0], "Path");
+		            contacts[id]["thumbnailHeight"] = getContentOfXMLTag(resource[0], "ThumbnailHeight");
+		            contacts[id]["thumbnailWidth"] = getContentOfXMLTag(resource[0], "ThumbnailWidth");
+		        }
+		        setPictureOfContact(id);
 		    }
 		    // Change contact lastSeen
 		    contactLastSeenChanges = documentXML.getElementsByTagName("ContactLastSeen");
 		    for (i = 0; i < contactLastSeenChanges.length; i++) {
 		        var id = getContentOfXMLTag(contactLastSeenChanges[i], "ID");
-		        contacts[id]["lastSeen"] = getContentOfXMLTag(contactLastSeenChanges[i], "LastSeen");
-		        setLastSeenOfContact(getContentOfXMLTag(contactLastSeenChanges[i], "ID"), contacts[id]["lastSeen"]);
+		        if (contacts[id]) {
+		            contacts[id]["lastSeen"] = getContentOfXMLTag(contactLastSeenChanges[i], "LastSeen");
+		            setLastSeenOfContact(getContentOfXMLTag(contactLastSeenChanges[i], "ID"), contacts[id]["lastSeen"]);
+		        }
 		    }
 		    // Change contact status
 		    contactStatusChanges = documentXML.getElementsByTagName("ContactStatus");
@@ -245,10 +290,14 @@ function getNews()
 		        if (resource.length > 0) {
 		            groups[id]["thumbnailPicture"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
 		            groups[id]["picture"] = getContentOfXMLTag(resource[0], "Path");
+		            groups[id]["thumbnailWidth"] = getContentOfXMLTag(resource[0], "ThumbnailWidth");
+		            groups[id]["thumbnailHeight"] = getContentOfXMLTag(resource[0], "ThumbnailHeight");
 		        }
 		        else {
 		            groups[id]["picture"] = "";
 		            groups[id]["thumbnailPicture"] = "";
+		            groups[id]["thumbnailWidth"] = "";
+		            groups[id]["thumbnailHeight"] = "";
 		        }
 		        groups[id]["members"] = [];
 		        membersXML = groupsXML[i].getElementsByTagName("Member");
@@ -274,10 +323,14 @@ function getNews()
 		        if (resource.length > 0) {
 		            groups[id]["thumbnailPicture"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
 		            groups[id]["picture"] = getContentOfXMLTag(resource[0], "Path");
+		            groups[id]["thumbnailWidth"] = getContentOfXMLTag(resource[0], "ThumbnailWidth");
+		            groups[id]["thumbnailHeight"] = getContentOfXMLTag(resource[0], "ThumbnailHeight");
 		        }
 		        else {
 		            groups[id]["picture"] = "";
 		            groups[id]["thumbnailPicture"] = "";
+		            groups[id]["thumbnailWidth"] = "";
+		            groups[id]["thumbnailHeight"] = "";
 		        }
 		        setPictureOfGroup(id);
 		    }
@@ -331,12 +384,16 @@ function getNews()
 		            message["resourceType"] = getContentOfXMLTag(resource[0], "Type");
 		            message["resourceThumbnailPath"] = getContentOfXMLTag(resource[0], "ThumbnailPath");
 		            message["resourcePath"] = getContentOfXMLTag(resource[0], "Path");
+		            message["resourceThumbnailWidth"] = getContentOfXMLTag(resource[0], "ThumbnailHeight");
+		            message["resourceThumbnailHeight"] = getContentOfXMLTag(resource[0], "ThumbnailWidth");
 				}
 				else
 				{
 		            message["resourceType"] = "";
 		            message["resourceThumbnailPath"] = "";
 		            message["resourcePath"] = "";
+		            message["resourceThumbnailWidth"] = "";
+		            message["resourceThumbnailHeight"] = "";
 		        }
 		        message["group"] = getContentOfXMLTag(messages[i], "Type") === "group";
 		        message["chatID"] = getContentOfXMLTag(messages[i], "ChatID");
@@ -346,8 +403,7 @@ function getNews()
 		        message["senderID"] = getContentOfXMLTag(messages[i], "Sender");
 		        message["time"] = getContentOfXMLTag(messages[i], "Time");
 		        message["status"] = getContentOfXMLTag(messages[i], "Status");
-		        message["status"] = getContentOfXMLTag(messages[i], "Status");
-		        addMessage(message);		        
+		        addMessage(message, lastCheckTime != -1 && message["senderID"] != 0);
 		    }
             // Change Message Status
 		    messageStatusChanges = documentXML.getElementsByTagName("MessageStatus");
@@ -355,7 +411,7 @@ function getNews()
 		    {
 		        setStatusOfMessage(getContentOfXMLTag(messageStatusChanges[i], "ID"), getContentOfXMLTag(messageStatusChanges[i], "Status"));
 		    }
-		    // Change Message Status
+		    // Change Message time
 		    messageTimeChanges = documentXML.getElementsByTagName("MessageTime");
 		    for (i = 0; i < messageTimeChanges.length; i++) {
 		        setTimeOfMessage(getContentOfXMLTag(messageTimeChanges[i], "ID"), getContentOfXMLTag(messageTimeChanges[i], "Time"));
@@ -363,9 +419,14 @@ function getNews()
 		    // Change Message Thumbnail
 		    messageThumbnailChanges = documentXML.getElementsByTagName("MessageThumbnail");
 		    for (i = 0; i < messageThumbnailChanges.length; i++) {
-		        setThumbnailOfMessage(getContentOfXMLTag(messageThumbnailChanges[i], "ID"), getContentOfXMLTag(messageThumbnailChanges[i], "ThumbnailPath"));
+		        setThumbnailOfMessage(getContentOfXMLTag(messageThumbnailChanges[i], "ID"), getContentOfXMLTag(messageThumbnailChanges[i], "ThumbnailPath"), getContentOfXMLTag(messageThumbnailChanges[i], "ThumbnailWidth"), getContentOfXMLTag(messageThumbnailChanges[i], "ThumbnailHeight"));
 		    }
-			restartTimer();
+		    if (lastCheckTime === -1)
+		    {
+		        listen();
+		    }
+		    lastCheckTime = getContentOfXMLTag(documentXML, "LastCheckTime");
+		    restartTimer();
 		}
 	}
 	xmlhttp.open("POST", "getNews.php", true);
@@ -375,12 +436,12 @@ function getNews()
 
 function addContact(contact)
 {
-    $("#add-contact-button").after("<div class=\"contact mdl-card mdl-shadow--2dp\" id=\"c" + idFromJid(contact["id"]) + "\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false,'" + contact["id"] + "')\" ><div class=\"name\">" + emoji.replace_unified(contact["name"]) + "</div><div class=\"lastSeen\">" + contact["lastSeen"] + "</div></div></div>");
+    $("#add-contact-button").after("<div class=\"contact mdl-card mdl-shadow--2dp\" id=\"c" + idFromJid(contact["id"]) + "\" >" + getCodeForPicture(contact["picture"], contact["thumbnailPicture"], "contacts", contact["name"], contact["thumbnailWidth"], contact["thumbnailHeight"]) + "<div class=\"contact_info\" onclick=\"answerButtonOnClick(false,'" + contact["id"] + "')\" ><div class=\"name\">" + emoji.replace_unified(contact["name"]) + "</div><div class=\"lastSeen\">" + contact["lastSeen"] + "</div></div></div>");
     refreshLightbox('#contacts', 'contacts');
 }
 
 function addGroup(group) {
-    groupHTML = "<div class=\"group mdl-card mdl-shadow--2dp\" id=\"c" + idFromJid(group["id"]) + "\" ><div class=\"group-header\">" + getCodeForPicture(group["picture"], group["thumbnailPicture"], "groups", group["name"]) + "<div class=\"group_info\" onclick=\"answerButtonOnClick(true,'" + group["id"] + "')\" ><div class=\"name\">" + emoji.replace_unified(group["name"]) + "</div><div class=\"lastSeen\">" + "</div></div><div class=\"mdl-button mdl-js-button mdl-button--icon \" onclick=\"expandGroup('" + idFromJid(group["id"]) + "')\" ><i class=\"material-icons\">expand_more</i></div></div>";
+    groupHTML = "<div class=\"group mdl-card mdl-shadow--2dp\" id=\"c" + idFromJid(group["id"]) + "\" ><div class=\"group-header\">" + getCodeForPicture(group["picture"], group["thumbnailPicture"], "groups", group["name"], group["thumbnailWidth"], group["thumbnailHeight"]) + "<div class=\"group_info\" onclick=\"answerButtonOnClick(true,'" + group["id"] + "')\" ><div class=\"name\">" + emoji.replace_unified(group["name"]) + "</div><div class=\"lastSeen\">" + "</div></div><div class=\"mdl-button mdl-js-button mdl-button--icon \" onclick=\"expandGroup('" + idFromJid(group["id"]) + "')\" ><i class=\"material-icons\">expand_more</i></div></div>";
     var adminChangeable = false;
     for (var i = 0; i < group["members"].length; i++) {
         if (group["members"][i]["id"] === "0") {
@@ -389,10 +450,13 @@ function addGroup(group) {
     }
     for (var i = 0; i < group["members"].length; i++) {
         groupHTML += "<div class=\"group-details-small\" ><div class=\"contact-small mdl-card mdl-shadow--2dp mdl-color--primary\" onclick=\"answerButtonOnClick(false,'" + group["members"][i]["id"] + "')\" >" + contacts[group["members"][i]["id"]]["name"] + "</div>";
-        groupHTML += "<div class=\"member-admin\"><i class=\"material-icons " + (group["members"][i]["admin"] ? "admin-active" : "admin-inactive") + (adminChangeable && group["members"][i]["id"] !== "0" ? " admin-changeable" : "") + "\" onclick=\"changeRole('" + group["id"] + "', '" + group["members"][i]["id"] + "')\" >grade</i></div>";
-        groupHTML += "<div class=\"member-remove\"><i class=\"material-icons\" onclick=\"removeMember('" + group["id"] + "', '" + group["members"][i]["id"] + "')\" >remove_circle</i></div></div>";
+        groupHTML += "<div class=\"member-admin\"><i class=\"material-icons " + (group["members"][i]["admin"] ? "admin-active" : "admin-inactive") + (adminChangeable && group["members"][i]["id"] !== "0" ? " admin-changeable \"  onclick=\"changeRole('" + group["id"] + "', '" + group["members"][i]["id"] + "')\"" : "\"") + " >grade</i></div>";
+        if (adminChangeable)
+            groupHTML += "<div class=\"member-remove\"><i class=\"material-icons\" " + (group["members"][i]["id"] !== "0" ? "onclick=\"removeMember('" + group["id"] + "', '" + group["members"][i]["id"] + "')\"" : "" ) + " >remove_circle</i></div>";
+        groupHTML += "</div>";
     }
-    groupHTML += "<div class=\"group-details-small\" ><div class=\"member-add mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent\" onclick=\"newMember('" + group["id"] + "')\" >Add member</div></div>";
+    if (adminChangeable)
+        groupHTML += "<div class=\"group-details-small\" ><div class=\"member-add mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent\" onclick=\"newMember('" + group["id"] + "')\" >Add member</div></div>";
     groupHTML += "</div>";
     $("#create-group-button").after(groupHTML);
     refreshLightbox('#groups', 'groups');
@@ -420,6 +484,13 @@ function setStatusOfContact(id, newStatus) {
     $("#s" + idFromJid(id) + " .status").html(emoji.replace_unified(newStatus));
 }
 
+function setPictureOfContact(id) {
+    $("#c" + idFromJid(id) + " .card-image ").css("background-image", "url(" + contacts[id]["thumbnailPicture"] + ")");
+    $("#c" + idFromJid(id) + " .lggroups ").attr("data-exthumbimage", contacts[id]["picture"]);
+    $("#s" + idFromJid(id) + " .card-image ").css("background-image", "url(" + contacts[id]["thumbnailPicture"] + ")");
+    $("#s" + idFromJid(id) + " .lgchats ").attr("data-exthumbimage", contacts[id]["picture"]);
+}
+
 function setNameOfGroup(id, name) {
     $("#c" + idFromJid(id) + " .name ").html(emoji.replace_unified(name));
     $("#g" + idFromJid(id) + " .name").html(emoji.replace_unified(name));
@@ -445,36 +516,70 @@ function setMembersOfGroup(id) {
     for (var i = 0; i < groups[id]["members"].length; i++) {
         membersHTML += "<div class=\"group-details-small " + ( expanded ? " group-details-small-shown" : "" ) + "\" ><div class=\"contact-small mdl-card mdl-shadow--2dp mdl-color--primary\" onclick=\"answerButtonOnClick(false,'" + groups[id]["members"][i]["id"] + "')\" >" + contacts[groups[id]["members"][i]["id"]]["name"] + "</div>";
         membersHTML += "<div class=\"member-admin\"><i class=\"material-icons " + (groups[id]["members"][i]["admin"] ? "admin-active" : "admin-inactive") + (adminChangeable && groups[id]["members"][i]["id"] !== "0" ? " admin-changeable" : "") + "\" onclick=\"changeRole('" + groups[id]["id"] + "', '" + groups[id]["members"][i]["id"] + "')\" >grade</i></div>";
-        membersHTML += "<div class=\"member-remove\"><i class=\"material-icons\" onclick=\"removeMember('" + groups[id]["id"] + "', '" + groups[id]["members"][i]["id"] + "')\" >remove_circle</i></div></div>";
+        if (adminChangeable)
+            membersHTML += "<div class=\"member-remove\"><i class=\"material-icons\" " + (groups[id]["members"][i]["id"] !== "0" ? " onclick=\"removeMember('" + groups[id]["id"] + "', '" + groups[id]["members"][i]["id"] + "')\"" : "" ) + " >remove_circle</i></div></div>";
+        else
+            membersHTML += "</div>";
     }
-    membersHTML += "<div class=\"group-details-small " + ( expanded ? " group-details-small-shown" : "" ) + "\" ><div class=\"member-add mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent\" onclick=\"newMember('" + groups[id]["id"] + "')\" >Add member</div></div>";
+    if (adminChangeable) 
+        membersHTML += "<div class=\"group-details-small " + ( expanded ? " group-details-small-shown" : "" ) + "\" ><div class=\"member-add mdl-button mdl-js-ripple-effect mdl-js-button mdl-color--accent\" onclick=\"newMember('" + groups[id]["id"] + "')\" >Add member</div></div>";
     $("#c" + idFromJid(id)).append(membersHTML);
    
 }
 
-function addMessage(message)
+function ackNotification(id)
 {
-    var newMessage = "<div id=\"m" + message["messageID"] + "\" class=\"mdl-card mdl-shadow--2dp message ";
+    $("#" + id).removeClass("message-new");
+    $("#" + id).attr("onmouseover", "");
+    notifications--;
+    refreshTitle();
+}
+
+function refreshTitle()
+{
+    document.title = "Chat" + (notifications > 0 ? " (" + notifications + ")" : "");
+}
+
+
+function addMessage(message, notify)
+{
+    var newMessage = "<div id=\"m" + message["messageID"] + "\" ";
+    if (notify) {
+        notifications++;
+        refreshTitle();
+        newMessage += "onmouseover=\"ackNotification('m" + message["messageID"] + "')\" ";
+    }
+    newMessage += "class=\"mdl-card mdl-shadow--2dp message ";
+    if (notify)
+        newMessage += "message-new ";
+
     if (message["senderID"] == 0)
 	{
 		newMessage += "message_own\"";
 		newMessage += " ><div class=\"message_header mdl-card__title \">";
-	}
-	else
+    }
+    else if (message["senderID"] == -1)
+    {
+        newMessage += "message_status\">";
+    }
+    else 
 	{
 		newMessage += "message_other\"";
 		newMessage += " ><div class=\"message_header mdl-card__title mdl-color--primary-dark\">";
-	}
-    newMessage += contacts[message["senderID"]]["name"] + "<div class = \"message-status\" ";
+    }
+    if (message["senderID"] != -1) {
+        newMessage += contacts[message["senderID"]]["name"] + "<div class = \"message-status\" ";
 
-    if (message["senderID"] != 0 && message["status"] != 4)
-        newMessage += "onClick=\"setMessageAsRead('" + message["messageID"] + "','" + message["whatsID"] + "','" + (message["group"] == "1" ? message["chatID"] : "") + "','" + message["senderID"] + "')\" ";
+        if (message["senderID"] != 0 && message["status"] != 4)
+            newMessage += "onClick=\"setMessageAsRead('" + message["messageID"] + "','" + message["whatsID"] + "','" + (message["group"] == "1" ? message["chatID"] : "") + "','" + message["senderID"] + "')\" ";
 
-    newMessage +=  "><span class=\"message-status-read message-status-off\">I</span><span class=\"message-status-received message-status-off\">I</span><span  class=\"message-status-send message-status-off\">I</span></div>";
-	newMessage += "</div><div class=\"message_body mdl-color-text--grey-700 mdl-card__supporting-text\">";
+        newMessage += "><span class=\"message-status-read message-status-off\">I</span><span class=\"message-status-received message-status-off\">I</span><span class=\"message-status-send message-status-off\">I</span></div>";
+        newMessage += "</div>";
+    }
+    newMessage += "<div class=\"message_body mdl-color-text--grey-700 mdl-card__supporting-text\">";
 	if (message["resourceType"] === "picture")
 	{
-	    newMessage += "<div class=\"message_resource\">" + getCodeForPicture(message["resourcePath"], message["resourceThumbnailPath"], "message", "Von " + contacts[message["senderID"]]["name"]) + "</div>";
+	    newMessage += "<div class=\"message_resource\">" + getCodeForPicture(message["resourcePath"], message["resourceThumbnailPath"], "message", "Von " + contacts[message["senderID"]]["name"], message["resourceThumbnailWidth"], message["resourceThumbnailHeight"]) + "</div>";
 	}
 	else if (message["resourceType"] === "video") {
 	    newMessage += "<div class=\"message_resource\">" + getCodeForVideo(message["resourcePath"], message["resourceThumbnailPath"], "message" , "Von " + contacts[message["senderID"]]["name"]) + "</div>";
@@ -502,24 +607,70 @@ function addMessage(message)
         refreshAudioplayer("#m" + message["messageID"] + " .audio");
 	}
 
+	var scrollWidth = $("#m" + message["messageID"] + " .message_body div:first-child")[0].scrollWidth;
+	var width = Math.max(150, scrollWidth + 10);
+	$("#m" + message["messageID"]).css("width", width + "px");
+	$("#m" + message["messageID"]).css("min-width", width + "px");
+
 	$(chat).clearQueue();
-	var offset = $(chat).children().last().offset().left - $(chat).children().first().offset().left;	
+	var lastOffset = $(chat).children().eq(-2).offset().left;
+	var firstOffset = $(chat).children().first().offset().left;
+	var offset = lastOffset - firstOffset;
 	$(chat).animate({ 
         scrollLeft: offset
-    }, 1000);
+	}, 1000);
+
+	
+
 }
+
+
 
 function refreshLightbox(gallery, group) {
     if ($(gallery).data('lightGallery') !== undefined)
         $(gallery).data('lightGallery').destroy(true);
+    else
+    {
+        $(gallery).on('onBeforeSlide.lg', function (event, prevIndex, index) {
+             loadLightboxImage(event, prevIndex, index);
+        });
+
+        $(gallery).on('onBeforeOpen.lg', function (event) {
+            lightBoxOpened = true;
+        });
+
+        $(gallery).on('onAferAppendSlide.lg', function (event, index) {
+            if (lightBoxOpened)
+            {
+                lightBoxOpened = false;
+                loadLightboxImage(event, 0, index);
+            }            
+        });
+    }
+
     $(gallery).lightGallery({
         selector: ".lg" + group,
         exThumbImage: 'data-exthumbimage',
         showThumbByDefault: false,
+        download: false,
     });
 
+   
 }
 
+function loadLightboxImage(event, prevIndex, index) {
+    var element = $(".lg .lg-item").eq(index).find(".lg-image");
+    if (element.length > 0 && !element.attr("base64Loaded"))
+    {
+        element.attr("base64Loaded", "true");
+        getMedia(element.attr("src"), element, false, "picture");
+    }
+    element = $(".lg .lg-item").eq(index).find(".lg-video source");
+    if (element.length > 0 && !element.attr("base64Loaded")) {
+        element.attr("base64Loaded", "true");
+        getMedia(element.attr("src"), element, false, "video");
+    }
+}
 
 function refreshAudioplayer(selector) {        
     $(selector).mb_miniPlayer({
@@ -548,9 +699,14 @@ function setTimeOfMessage(messageID, time) {
      $("#m" + messageID + " .message-time").html(time);  
 }
 
-function setThumbnailOfMessage(messageID, thumbnail)
+function setThumbnailOfMessage(messageID, thumbnail, width, height)
 {
-    $("#m" + messageID + " .card-image").css("background", "url(" + thumbnail + ")");
+    getMedia(thumbnail, "#m" + messageID, true, "picture");
+
+    if (width > 0 && height > 0) {
+        $("#m" + messageID + " .card-image").css("width", width + " px");
+        $("#m" + messageID + " .card-image").css("height", height + " px");
+    }
 }
 
 function bringChatToTop(group, id)
@@ -560,7 +716,9 @@ function bringChatToTop(group, id)
         chat = "#g" + idFromJid(id);
     else
         chat = "#s" + idFromJid(id);
+    var scollPrev = $(chat + " .messages").scrollLeft();
     $(chat).prependTo("#chats");
+    $(chat + " .messages").scrollLeft(scollPrev);
 }
 
 function openChat(group, id)
@@ -569,7 +727,7 @@ function openChat(group, id)
 	if (group === false)
 	{		
 	    newChat += "<h4>" + emoji.replace_unified(contacts[id]["name"]) + "</h4>";
-		newChat += "<div class=\"chat_picture\">" + getCodeForPicture(contacts[id]["picture"], contacts[id]["thumbnailPicture"] , "chats", contacts[id]["name"]) + "</div>";
+	    newChat += "<div class=\"chat_picture\">" + getCodeForPicture(contacts[id]["picture"], contacts[id]["thumbnailPicture"], "chats", contacts[id]["name"], contacts[id]["thumbnailWidth"], contacts[id]["thumbnailHeight"]) + "</div>";
 		newChat += "<p>" + "<span class=\"status\">" + emoji.replace_unified(contacts[id]["status"]) + "</span></p>";
 		newChat += "<p><i class=\"material-icons\">phone</i> +" + "<span class=\"number\">" + idFromJid(id) + "</span></p>";
 		newChat += "<p><span class=\"lastSeen\">" + contacts[id]["lastSeen"] + "</span></p>";
@@ -577,12 +735,13 @@ function openChat(group, id)
 	else
 	{
 	    newChat += "<h4 class=\"name\">" + emoji.replace_unified(groups[id]["name"]) + "</h4>";
-	    newChat += "<div class=\"chat_picture\">" + getCodeForPicture(groups[id]["picture"], groups[id]["thumbnailPicture"], "chats", groups[id]["name"]) + "</div>";
+	    newChat += "<div class=\"chat_picture\">" + getCodeForPicture(groups[id]["picture"], groups[id]["thumbnailPicture"], "chats", groups[id]["name"], groups[id]["thumbnailWidth"], groups[id]["thumbnailHeight"]) + "</div>";
 	}
 	newChat += "</div><button class=\"answer_button mdl-button mdl-js-ripple-effect mdl-js-button mdl-button--fab mdl-color--accent\" ";
 	newChat += "onclick=\"answerButtonOnClick(" + group + ",'" + id + "')\"";
 	newChat +=" ><i class=\"material-icons mdl-color-text--white\" role=\"presentation\">reply</i><span class=\"visuallyhidden\">reply</span></button><div class=\"mdl-card__supporting-text messages\"><div class=\"messages-space\"></div></div></div>";	
 	$("#chats").prepend(newChat);
+
 	refreshLightbox("#chats", "chats");
 }
 
@@ -603,6 +762,7 @@ function sendMessage()
 			    getNews();
 			}, 1000);
 			hideInputField();
+			$('#content').mCustomScrollbar("scrollTo", "0", {});
 		}
 		$('#refresh_button').removeAttr("disabled");
 	}
@@ -616,13 +776,28 @@ function sendMessage()
 	$("#refresh_button").attr("disabled", "disabled");
 }
 
-function send(strings, url, onreadystatechange, file) {
+function send(strings, url, onreadystatechange, file, cache) {
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function () {
         onreadystatechange(xmlhttp);
     }
-    xmlhttp.open("POST", url, true);
 
+    var urlParam = "";
+    if (cache)
+    {
+        urlParam = "?";
+        var first = true;
+        for (var key in strings)
+        {
+            if (!first)  
+                urlParam += "&";
+            else
+                first = false;
+            urlParam += key + "=" + encodeURIComponent(strings[key], theKey);
+        }
+    }
+    xmlhttp.open(cache ? "GET" : "POST", url + urlParam, true);
+  
 
     var formData = new FormData();
 
@@ -635,6 +810,8 @@ function send(strings, url, onreadystatechange, file) {
         var reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (function (theFile) {
+            var encryptedFilename = $.jCryption.encrypt(file.name, theKey);
+            formData.append("filename", encryptedFilename);
             formData.append("file", $.jCryption.encrypt(reader.result, theKey));
             xmlhttp.send(formData);
         })
@@ -795,19 +972,65 @@ function setMessageAsRead(id, wid, group_id, sender_id) {
 
 
 var nmb = 0;
+var tempMedia;
+function getCodeForPicture(path, pathThumbnail, group, title, width, height)
+{
+    getMedia(pathThumbnail, "#l" + (++nmb), true, "picture");
 
-function getCodeForPicture(path, pathThumbnail, group, title)
-{   
-    return "<a href=\"" + path + "\" id=\"l" + (++nmb) + "\" class=\"lg" + group + "\" data-sub-html=\"<p>" + title + "</p>\" data-exthumbimage=\"" + pathThumbnail + "\"><div class=\"mdl-card mdl-shadow--2dp card-image mdl-cell\" style=\"background: url(" + pathThumbnail + ")\"><div class=\"mdl-card__title mdl-card--expand\"></div></div></a>";
+    return "<a href=\"" + path + "\" id=\"l" + nmb + "\" class=\"lg" + group + "\" data-sub-html=\"<p>" + title + "</p>\" data-exthumbimage=\"" + pathThumbnail + "\"><div class=\"mdl-card mdl-shadow--2dp card-image mdl-cell\" style=\"" + (width > 0 && height > 0 ? "height:" + height +" px;width:" + width + " px" : "") + "\"><div class=\"mdl-card__title mdl-card--expand\"></div></div></a>";
 }
 
+function getMedia(path, scope, thumbnail, type)
+{
+    var onreadystatechange = function (xmlhttp) {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            setMedia($.jCryption.decrypt(xmlhttp.responseText, theKey), scope, thumbnail, type);
+        }
+    }
+    var strings = [];
+    strings["id"] = path;
+
+    send(strings, "getMedia.php", onreadystatechange, null, true);
+}
+
+function setMedia(base64, scope, thumbnail, type)
+{
+    if (thumbnail && $(scope + " .card-image").length)
+    {
+        $(scope + " .card-image").css("background-image", "url(" + base64 + ")");
+        $(scope).attr("data-exthumbimage", base64);
+    }
+    else if (!thumbnail && scope.length) {        
+        scope.attr("src", base64);
+        if (type === "video")
+            scope.parent().load();
+        if (type === "audio") {
+            scope.parent().jPlayer("load");
+            scope.parent().jPlayer("play");
+        }
+    }
+    else
+        setTimeout(function () { setPicture(base64, scope); }, 100);
+}
+
+
 function getCodeForVideo(path, pathThumbnail, group, title) {
-    code = "<div style=\"display:none;\" id=\"v" + (++nmb) + "\"><video class=\"lg-video-object lg-html5 video-js vjs-default-skin\" controls preload=\"none\"><source src=\"" + path + "\" type=\"video/mp4\">Your browser does not support HTML5 video.</video></div>";
-    return code + "<a id=\"l" + nmb + "\" href=\"\" data-html=\"#v" + nmb + "\" class=\"lg" + group + "\" data-sub-html=\"<p>" + title + "</p>\" data-exthumbimage=\"" + pathThumbnail + "\" ><div class=\"mdl-card mdl-shadow--2dp card-image mdl-cell\" style=\"background: url(" + pathThumbnail + ")\"><div class=\"mdl-card__title mdl-card--expand\"></div></div></a>";
+    getMedia(pathThumbnail, "#l" + (++nmb), true, "picture");
+
+    code = "<div style=\"display:none;\" id=\"v" + nmb + "\"><video class=\"lg-video-object lg-html5 video-js vjs-default-skin\" controls preload=\"none\"><source src=\"" + path + "\" type=\"video/mp4\">Your browser does not support HTML5 video.</video></div>";
+    return code + "<a id=\"l" + nmb + "\" href=\"\" data-html=\"#v" + nmb + "\" class=\"lg" + group + "\" data-sub-html=\"<p>" + title + "</p>\" data-exthumbimage=\"" + pathThumbnail + "\" ><div class=\"mdl-card mdl-shadow--2dp card-image mdl-cell\" style=\"\"><div class=\"mdl-card__title mdl-card--expand\"></div></div></a>";
+}
+
+function onAudioDownload(player) {
+    var element = $("#" + player.id + " audio");
+    if (!element.attr("base64Loaded")) {
+        element.attr("base64Loaded", "true");
+        getMedia(element.attr("src"), element, false, "audio");
+    }
 }
 
 function getCodeForAudio(path) {
-    return "<a class=\"audio {}\"  href=\"" + path + "\">Audio</a>";
+    return "<a class=\"audio {onPlay: onAudioDownload, showControls: false}\"  href=\"" + path + "\">Audio</a>";
 }
 
 function showEmoji(category)

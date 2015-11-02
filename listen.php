@@ -1,5 +1,4 @@
 <?php
-set_time_limit(600); //1 minute
 ini_set("mysqli.reconnect", "1");
 session_start();
 $_SESSION["messagesToSend"] = true;
@@ -10,11 +9,12 @@ $_SESSION["contactsToAdd"] = true;
 $_SESSION["rolesToChange"] = true;
 session_write_close();
 
+$starttime = time();
 $time = $_SESSION["running"];
 
 $mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
 
-function running($time)
+function running($time, $starttime)
 {
     //Compare initial timestamp in session
     //and current timestamp in session. This
@@ -23,7 +23,7 @@ function running($time)
     //kill the old socket.php processes.
     session_start();
     $running = $_SESSION["running"];
-    if ($running != $time) {
+    if ($running != $time || time() - $starttime > 120) {
         //index.php refreshed by user
         die();
     }
@@ -46,10 +46,12 @@ $events = new MyEvents($w);
 $events->mysqli = $mysqli;
 $events->setEventsToListenFor($events->activeEvents);
 
-//$w->sendPresenceSubscription("4915253889661");
+
 $lastPing = time();
 $w->connect(); // Connect to WhatsApp network
 $w->loginWithPassword($password); // logging in with the password we got!
+//$w->sendOfflineStatus();
+//$w->sendSetPrivacySettings('last', 'contacts');
 
 $res = $mysqli->query("SELECT * FROM contacts WHERE lastModified != 0");
 
@@ -65,7 +67,7 @@ if (false) {
     $w->sendGetGroups();
 }
 
-while (running($time)) {
+while (running($time, $starttime)) {
     while($w->pollMessage(false));
 
 	if (time() - $lastPing > 300)
@@ -75,19 +77,24 @@ while (running($time)) {
 	}
     $mysqli->ping();
     session_start();
-    echo "Any news?" . var_dump($_SESSION["messagesToSend"]);
 	if ($_SESSION["messagesToSend"] == true)
 	{
 		$_SESSION["messagesToSend"] = false;			
 		$res = $mysqli->query("SELECT * FROM messages Left join resources on messages.resource = resources.resource_id WHERE status=0");
-		echo $mysqli->errno . $mysqli->error;
+		$w->debugPrint($mysqli->errno . $mysqli->error);
 		foreach ($res as $row)
 		{
 			$currentMessageID = $row["intern_id"];
             if (!$mysqli->query("UPDATE messages SET status=1 WHERE intern_id=" . $row["intern_id"]))
 			{
-				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}
+            
+            if (!$mysqli->query("UPDATE " . ($row["isGroup"] === "0" ? "contacts" : "groups") . " SET lastUsed=CURRENT_TIMESTAMP WHERE id='" . $row['chat_id'] . "'"))
+			{
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
+			}
+
 			if ($row['resource'] === NULL)
 			{
 				$id = $w->sendMessage($row['chat_id'] , $row['text']);				
@@ -102,7 +109,7 @@ while (running($time)) {
                 } else if ($row['type'] === 'audio') {
 				    $id = $w->sendMessageAudio($row['chat_id'], $row['path']);
                 } else {
-                    echo "Datei nicht unterstützt: $extension";
+                    $w->debugPrint("Datei nicht unterstützt: $extension");
                     die();
                 }
 			}           
@@ -136,11 +143,11 @@ while (running($time)) {
                 $w->sendSetGroupPicture($gid, $row["path"]);
             if (!$mysqli->query("DELETE FROM groups WHERE intern_id=" . $row["intern_id"]))
 			{
-				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}
             if (!$mysqli->query("DELETE FROM groups_contacts_join  WHERE group_id='" . $row["intern_id"] . "'"))
 			{
-				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}    
         }
     }
@@ -154,7 +161,7 @@ while (running($time)) {
 		{
             if (!$mysqli->query("DELETE FROM groups_contacts_join WHERE group_id='" . $row["group_id"] . "' AND contact_id='" . $row["contact_id"] . "' "))
 			{
-				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}
             $w->sendGroupsParticipantsAdd($row["group_id"], $row["contact_id"]);               
         }
@@ -169,7 +176,7 @@ while (running($time)) {
 		{
             if (!$mysqli->query("UPDATE groups_contacts_join SET remove=0 WHERE group_id='" . $row["group_id"] . "' AND contact_id='" . $row["contact_id"] . "' "))
 			{
-				echo "Table update failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table update failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}
             $w->sendGroupsParticipantsRemove($row["group_id"], $row["contact_id"]);                
         }
@@ -184,9 +191,9 @@ while (running($time)) {
 		{
             if (!$mysqli->query("DELETE FROM contacts WHERE id='" . $row["id"] . "' "))
 			{
-				echo "Table delete failed: (" . $mysqli->errno . ") " . $mysqli->error;
+				$w->debugPrint("Table delete failed: (" . $mysqli->errno . ") " . $mysqli->error);
 			}
-            $events->addContacts(array($row["id"]));                
+            $events->addContacts(array($w->getJID($row["id"])));                
         }
     }
 
@@ -204,5 +211,6 @@ while (running($time)) {
         }
     }
     session_write_close();
+
 }
-echo "10min Timeout";
+$w->debugPrint("10min Timeout");

@@ -3,27 +3,27 @@
     $xml = new SimpleXMLElement('<xml/>');
     $theKey = "test";
 	$message = $_REQUEST["message"];
-
+    $lastCheckTime = $_REQUEST["lastCheckTime"];
 	$mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
     session_start();
     
     // CONTACTS
        
-	$stmt = $mysqli->prepare("SELECT * FROM contacts Left join resources on contacts.picture = resources.resource_id WHERE UNIX_TIMESTAMP(lastModified) >= ?");	
-    $stmt->bind_param("i", $_REQUEST["lastCheckTime"]);
+	$stmt = $mysqli->prepare("SELECT * FROM contacts Left join resources on contacts.picture = resources.resource_id WHERE UNIX_TIMESTAMP(lastModified) >= ? ORDER BY contacts.lastUsed ASC");	
+    $stmt->bind_param("i", $lastCheckTime);
 	$stmt->execute();   
     $xml->addChild('LastCheckTime', time());
 	$res = $stmt->get_result(); 
-
+    
 	foreach ($res as $row)
 	{
-        if (!isset($_SESSION["contacts"][$row["id"]]) || $_SESSION["contacts"][$row["id"]]["new"])
+        if (!isset($_SESSION["contacts"][$row["id"]]) || $_SESSION["contacts"][$row["id"]]["new"] || $lastCheckTime == -1)
         {
 		    $contact = $xml->addChild('Contact');
 		    $contact->addChild('Name', $row["name"]);
 		    $contact->addChild('Number', $row["number"]);
 		    $contact->addChild('ID', $row["id"]);
-            $contact->addChild('LastSeen', ($row["lastSeen"] == 0 ? "Online" : date("j. M H:i", $row["lastSeen"])));
+            $contact->addChild('LastSeen', ($row["lastSeen"] == 0 ? "Online" : ($row["lastSeen"] == -1 ? "Denied" : date("j. M H:i", $row["lastSeen"]))));
             $contact->addChild('Status', $row["status"]);
 		    if ($row["picture"] !== NULL)
 		    {
@@ -31,6 +31,8 @@
 			    $resource->addChild('ID', $row["resource_id"]);
 			    $resource->addChild('Path', $row["path"]);
 			    $resource->addChild('ThumbnailPath', $row["thumbnail_path"]);
+                $resource->addChild('ThumbnailWidth', $row["thumbnail_width"]);
+                $resource->addChild('ThumbnailHeight', $row["thumbnail_height"]);
 		    }
             $_SESSION["contacts"][$row["id"]]["new"] = false;
         }
@@ -40,7 +42,7 @@
             {
                 $contact = $xml->addChild('ContactLastSeen');   
                 $contact->addChild('ID', $row["id"]);   
-                $contact->addChild('LastSeen', ($row["lastSeen"] == 0 ? "Online" : date("j. M H:i", $row["lastSeen"])));
+                $contact->addChild('LastSeen', ($row["lastSeen"] == 0 ? "Online" : ($row["lastSeen"] == -1 ? "Denied" : date("j. M H:i", $row["lastSeen"]))));
                 $_SESSION["contacts"][$row["id"]]["lastSeen"] = false;
             }
             if ($_SESSION["contacts"][$row["id"]]["status"])
@@ -60,6 +62,8 @@
 			        $resource->addChild('ID', $row["resource_id"]);
 			        $resource->addChild('Path', $row["path"]);
 			        $resource->addChild('ThumbnailPath', $row["thumbnail_path"]);
+                    $resource->addChild('ThumbnailWidth', $row["thumbnail_width"]);
+                    $resource->addChild('ThumbnailHeight', $row["thumbnail_height"]);
 		        }
                 $_SESSION["contacts"][$row["id"]]["picture"] = false;
             }
@@ -80,10 +84,10 @@
 
     // GROUPS
 
-    $stmt = $mysqli->prepare("SELECT  groups.*, resources.*, groups_contacts_join.contact_id, groups_contacts_join.admin FROM groups Left join groups_contacts_join on groups.id = groups_contacts_join.group_id Left join resources on groups.picture = resources.resource_id WHERE UNIX_TIMESTAMP(groups.lastModified) >= ? AND groups.id!='0' ORDER BY groups.id");	
-    $stmt->bind_param("i", $_REQUEST["lastCheckTime"]);
+    $stmt = $mysqli->prepare("SELECT  groups.*, resources.*, groups_contacts_join.contact_id, groups_contacts_join.admin FROM groups Left join groups_contacts_join on groups.id = groups_contacts_join.group_id Left join resources on groups.picture = resources.resource_id WHERE UNIX_TIMESTAMP(groups.lastModified) >= ? AND groups.id!='0' ORDER BY groups.lastUsed ASC, groups.id ");	
+    $stmt->bind_param("i", $lastCheckTime);
 	$stmt->execute(); 
-	$res = $stmt->get_result(); 
+	$res = $stmt->get_result();
     $mergedRes = array();
 	foreach ($res as $row)
 	{
@@ -91,7 +95,7 @@
     }
     foreach ($mergedRes as $row)
     {
-        if (!isset($_SESSION["groups"][$row[0]["id"]]) || $_SESSION["groups"][$row[0]["id"]]["new"])
+        if (!isset($_SESSION["groups"][$row[0]["id"]]) || $_SESSION["groups"][$row[0]["id"]]["new"] || $lastCheckTime == -1)
         {
 		    $group = $xml->addChild('Group');
 		    $group->addChild('Name', $row[0]["name"]);
@@ -102,6 +106,8 @@
 			    $resource->addChild('ID', $row[0]["resource_id"]);
 			    $resource->addChild('Path', $row[0]["path"]);
 			    $resource->addChild('ThumbnailPath', $row[0]["thumbnail_path"]);
+                $resource->addChild('ThumbnailWidth', $row[0]["thumbnail_width"]);
+                $resource->addChild('ThumbnailHeight', $row[0]["thumbnail_height"]);
 		    }
             foreach ($row as $singleRow) 
             {
@@ -130,6 +136,8 @@
 			        $resource->addChild('ID', $row[0]["resource_id"]);
 			        $resource->addChild('Path', $row[0]["path"]);
 			        $resource->addChild('ThumbnailPath', $row[0]["thumbnail_path"]);
+                    $resource->addChild('ThumbnailWidth', $row[0]["thumbnail_width"]);
+                    $resource->addChild('ThumbnailHeight', $row[0]["thumbnail_height"]);
 		        }
                 $_SESSION["groups"][$row[0]["id"]]["picture"] = false;
             }
@@ -151,14 +159,13 @@
 
     // MESSAGES
     	
-	$stmt = $mysqli->prepare("SELECT * FROM messages Left join resources on messages.resource = resources.resource_id WHERE UNIX_TIMESTAMP(lastModified) >= ? LIMIT 50");	
-	$stmt->bind_param("i", $_REQUEST["lastCheckTime"]);
+	$stmt = $mysqli->prepare("SELECT * FROM (SELECT * FROM messages Left join resources on messages.resource = resources.resource_id WHERE UNIX_TIMESTAMP(lastModified) >= ? ORDER BY time DESC LIMIT 50) AS result ORDER BY time ASC");	
+	$stmt->bind_param("i", $lastCheckTime);
 	$stmt->execute(); 
-	$res = $stmt->get_result(); 	 
-	
+	$res = $stmt->get_result(); 
 	foreach ($res as $row)
 	{	
-        if (!isset($_SESSION["messages"][$row["intern_id"]]) || $_SESSION["messages"][$row["intern_id"]]["new"])
+        if ((!isset($_SESSION["messages"][$row["intern_id"]]) && !isset($_SESSION["messages"][$row["id"]])) || $_SESSION["messages"][$row["intern_id"]]["new"] || $lastCheckTime == -1)
         {
             $message = $xml->addChild('Message');      
 		    $message->addChild('Text', $row["text"]);
@@ -179,6 +186,8 @@
 			    $resource->addChild('Type', $row["type"]);
 			    $resource->addChild('Path', $row["path"]);
 			    $resource->addChild('ThumbnailPath', $row["thumbnail_path"]);
+                $resource->addChild('ThumbnailWidth', $row["thumbnail_width"]);
+			    $resource->addChild('ThumbnailHeight', $row["thumbnail_height"]);
 		    }
             $_SESSION["messages"][$row["intern_id"]]["new"] = false;
         }
@@ -203,6 +212,8 @@
                 $message = $xml->addChild('MessageThumbnail');   
                 $message->addChild('ID', $row["intern_id"]);   
                 $message->addChild('ThumbnailPath', $row["thumbnail_path"]);
+                $message->addChild('ThumbnailWidth', $row["thumbnail_width"]);
+			    $message->addChild('ThumbnailHeight', $row["thumbnail_height"]);
                 $_SESSION["messages"][$row["intern_id"]]["thumbnail_path"] = false;
             }
         }

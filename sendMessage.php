@@ -2,10 +2,16 @@
     require_once(__DIR__.'/include/sqAES.php');
     $theKey = "test";
     session_start();
+    $id = sqAES::decrypt($theKey, $_POST["id"]);
 	$message = sqAES::decrypt($theKey, $_POST["message"]);
 	$group = (int)sqAES::decrypt($theKey, $_POST["group"]);
-	$id = sqAES::decrypt($theKey, $_POST["id"]);
 	
+	if (!$id)
+    {
+        echo "not valid" . $id . "," . $_POST["id"];
+        die();
+    }
+
 	$mysqli = new mysqli("db586264614.db.1and1.com", "dbo586264614", "#Budapest1101", "db586264614");
 
 	if ($_POST["file"] !== NULL)
@@ -15,7 +21,8 @@
 		list(, $data)      = explode(',', $data);
 		$data = base64_decode($data);
 
-        $extension = substr($type, strrpos($type, "/") + 1);
+        $orgFilename = sqAES::decrypt($theKey, $_POST["filename"]);
+        $extension = substr($orgFilename, strrpos($orgFilename, ".") + 1);
 		$filename = "./media/" . (string)sha1($data) . ".$extension";
         file_put_contents($filename, $data);
         
@@ -27,10 +34,11 @@
 			$type = 'audio';
         } else {
             trigger_error ("Given resource is not valid");
+            die();
         }
 		
 		$stmt = $mysqli->prepare("INSERT INTO resources (type, path, thumbnail_path) VALUES (?, ?, ?)");	
-		$stmt->bind_param("sss", $type, $filename, $filename);
+		$stmt->bind_param("sss", $type, $filename, $type === 'picture' ? $filename : "media/404.jpg");
 		$stmt->execute();
 		
 		$resourceID = $mysqli->insert_id;
