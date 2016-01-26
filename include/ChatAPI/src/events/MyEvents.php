@@ -1,4 +1,5 @@
 <?php
+
 require 'AllEvents.php';
 require 'include/vCard.php';
 
@@ -7,12 +8,13 @@ class MyEvents extends AllEvents
 {
 	public $mysqli;
 
-	/**
-	* This is a list of all current events. Uncomment the ones you wish to listen to.
-	* Every event that is uncommented - should then have a function below.
-	* @var array
-	*/
-	public $activeEvents = array(
+    /**
+     * This is a list of all current events. Uncomment the ones you wish to listen to.
+     * Every event that is uncommented - should then have a function below.
+     *
+     * @var array
+     */
+	public $activeEvents = [
 		//        'onClose',
 		//        'onCodeRegister',
 		//        'onCodeRegisterFailed',
@@ -33,7 +35,7 @@ class MyEvents extends AllEvents
 		'onGetGroupMessage',
 		//        'onGetGroupParticipants',
 		'onGetGroups',
-		'onGetGroupV2Info',
+		'onGetGroupV2Info',!
 		'onGetGroupsSubject',
 		'onGetImage',
 		'onGetGroupImage',
@@ -83,14 +85,18 @@ class MyEvents extends AllEvents
 		//        'onUploadFile',
 		//        'onUploadFileFailed',
 		'onNumberWasUpdated',
-	);
+	];
 
 	public function onGroupsParticipantChangedNumber($mynumber, $groupId, $time, $oldNumber, $notify, $newNumber)
 	{
-		if (!$this->mysqli->query("UPDATE contacts SET id='$newNumber' WHERE id='$oldNumber'"))
+
+		if (!$this->mysqli->query("DELETE FROM contacts WHERE id='$oldNumber'"))
 		{
 			$this->whatsProt->debugPrint("Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error);
 		}
+		
+        $this->addContacts(array($newNumber));
+
 		if (!$this->mysqli->query("UPDATE groups_contacts_join SET contact_id='$newNumber' WHERE contact_id='$oldNumber'"))
 		{
 			$this->whatsProt->debugPrint("Table update failed: (" . $this->mysqli->errno . ") " . $this->mysqli->error);
@@ -106,21 +112,28 @@ class MyEvents extends AllEvents
 
 		$this->onGetGroupMessage($mynumber, $groupId, -1, time(), '', time(), '', "Number ".substr($oldNumber, 0, strpos($oldNumber, "@"))." changed to ".substr($newNumber, 0, strpos($newNumber, "@")));
 
-		$this->setSessionNews("groups", $groupId, "members");
+        echo "Reload page; Number has changed!";
+        die();
 	}
 
 	public function setSessionNews($type, $id, $value)
 	{
 		$this->whatsProt->debugPrint("$type - $id - $value <br>");
-		session_start();
+        $sessionStarted = (session_status() === PHP_SESSION_ACTIVE);
+        if (!$sessionStarted)
+		    session_start();
 		$_SESSION[$type][$id][$value] = true;
-		session_write_close();
+        if (!$sessionStarted)
+		    session_write_close();
 	}
 	public function unsetSessionNews($type, $id, $value)
 	{
-		session_start();
+        $sessionStarted = (session_status() === PHP_SESSION_ACTIVE);
+        if (!$sessionStarted)
+		    session_start();
 		$_SESSION[$type][$id][$value] = false;
-		session_write_close();
+        if (!$sessionStarted)
+		    session_write_close();
 	}
 
 	public function __construct(WhatsProt $whatsProt)
@@ -183,6 +196,7 @@ class MyEvents extends AllEvents
 		}
 
 		$this->whatsProt->sendMessageRead($from, $id, "");
+        $this->onMessagePaused($mynumber, $from, $id, '', time());
 		$this->setSessionNews("messages", $this->mysqli->insert_id, "new");
 	}
 

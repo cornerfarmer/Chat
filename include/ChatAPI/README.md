@@ -2,13 +2,13 @@
 
 Interface to WhatsApp Messenger
 
-**Read the [wiki](https://github.com/WHAnonymous/Chat-API/wiki)** and previous issues before opening a new one! Maybe your issue is already answered.
+**Read the [wiki](https://github.com/mgp25/Chat-API/wiki)** and previous issues before opening a new one! Maybe your issue is already answered.
 
-For new WhatsApp updates check **[WhatsApp incoming updates log](https://github.com/WHAnonymous/Chat-API/wiki/WhatsApp-incoming-updates)**
+For new WhatsApp updates check **[WhatsApp incoming updates log](https://github.com/mgp25/Chat-API/wiki/WhatsApp-incoming-updates)**
 
 **Do you like this project? Support it by donating**
 - ![Paypal](https://raw.githubusercontent.com/reek/anti-adblock-killer/gh-pages/images/paypal.png) Paypal: [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YNVNPLE45DNG6)
-- ![btc](https://camo.githubusercontent.com/4bc31b03fc4026aa2f14e09c25c09b81e06d5e71/687474703a2f2f7777772e6d6f6e747265616c626974636f696e2e636f6d2f696d672f66617669636f6e2e69636f) Bitcoin: 1HcEX9foem5atreEg1gbQ6xVeosN5WEcjs 
+- ![btc](https://camo.githubusercontent.com/4bc31b03fc4026aa2f14e09c25c09b81e06d5e71/687474703a2f2f7777772e6d6f6e747265616c626974636f696e2e636f6d2f696d672f66617669636f6e2e69636f) Bitcoin: 1DCEpC9wYXeUGXS58qSsqKzyy7HLTTXNYe 
 
 ----------
 ### Installation
@@ -17,7 +17,7 @@ For new WhatsApp updates check **[WhatsApp incoming updates log](https://github.
 composer require whatsapp/chat-api
 ```
 
-- Requires: [PHP Protobuf](https://github.com/allegro/php-protobuf) and [Curve25519](https://github.com/mgp25/curve25519-php) to enable end to end encryption [**Optional**]
+- **Requires:** [PHP Protobuf](https://github.com/allegro/php-protobuf) and [Curve25519](https://github.com/mgp25/curve25519-php) to enable end to end encryption
 
 ### Special thanks
 

@@ -26,7 +26,7 @@ function running($time, $starttime)
     if ($running != $time || time() - $starttime > 120) {
         //index.php refreshed by user
         die();
-    }
+    }    
     session_write_close();
     return true; //continue running
 }
@@ -51,6 +51,7 @@ $w->connect(); // Connect to WhatsApp network
 $w->loginWithPassword($password); // logging in with the password we got!
 //$w->sendOfflineStatus();
 //$w->sendSetPrivacySettings('last', 'contacts');
+//$events->onGroupsParticipantChangedNumber(0, '4915730395125-1448032428@g.us', time(), '4915253889669@s.whatsapp.net', 0, '4915253889661@s.whatsapp.net');
 
 $res = $mysqli->query("SELECT * FROM contacts WHERE lastModified != 0");
 
@@ -76,6 +77,7 @@ while (running($time, $starttime)) {
 	}
     $mysqli->ping();
     session_start();
+  
 	if ($_SESSION["messagesToSend"] == true)
 	{
 		$_SESSION["messagesToSend"] = false;			
@@ -114,7 +116,7 @@ while (running($time, $starttime)) {
 			}           
 		}
 	}	 
-   
+
     while (count($_SESSION["messagesToSetAsRead"]) > 0)
     {
         $message = array_pop($_SESSION["messagesToSetAsRead"]);
@@ -129,6 +131,7 @@ while (running($time, $starttime)) {
             $events->onMessageReceivedClient($username, $message["sender_id"], $message["id"], "read", time(), NULL);
         }
     }
+   
 
     if ($_SESSION["groupsToCreate"] == true)
 	{

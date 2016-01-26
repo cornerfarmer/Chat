@@ -217,7 +217,6 @@
                 $_SESSION["messages"][$row["intern_id"]]["thumbnail_path"] = false;
             }
         }
-	}
-  
+	} 
 	echo sqAES::crypt($theKey, $xml->asXML());
 ?>
